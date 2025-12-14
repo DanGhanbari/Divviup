@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2 } from 'lucide-react';
+import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2, Euro, PoundSterling } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -169,6 +169,31 @@ const GroupDetails = () => {
 
     const isOwner = group?.members.find(m => m.id === user?.id)?.role === 'owner';
 
+    const handleRemoveMember = (memberId) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Remove Member',
+            message: 'Are you sure you want to remove this member? They will lose access to the group.',
+            type: 'danger',
+            confirmText: 'Remove',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/groups/${id}/members/${memberId}`);
+                    setGroup({ ...group, members: group.members.filter(m => m.id !== memberId) });
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to remove member');
+                }
+            }
+        });
+    };
+
+    const currencySymbol = {
+        'USD': '$',
+        'GBP': '£',
+        'EUR': '€'
+    }[group?.currency] || '$';
+
     if (loading) return <div className="p-8 text-center">Loading...</div>;
     if (!group) return <div className="p-8 text-center text-red-500">Group not found</div>;
 
@@ -197,13 +222,39 @@ const GroupDetails = () => {
                     </div>
                     <div className="flex -space-x-2">
                         {group.members.map((m) => (
-                            <div key={m.id} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-xs font-bold text-indigo-700" title={m.name}>
-                                {m.name.charAt(0)}
+                            <div key={m.id} className="relative group/avatar">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-xs font-bold text-indigo-700" title={m.name}>
+                                    {m.name.charAt(0)}
+                                </div>
                             </div>
                         ))}
-
                     </div>
                 </div>
+
+                {/* Expanded Member List for Owner to Manage */}
+                {isOwner && (
+                    <div className="mt-4 border-t pt-4">
+                        <p className="text-sm font-medium text-slate-700 mb-2">Manage Members</p>
+                        <div className="flex flex-wrap gap-2">
+                            {group.members.map(m => (
+                                <div key={m.id} className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                                    <span className="text-sm text-slate-700">{m.name}</span>
+                                    {m.role === 'owner' ? (
+                                        <span className="text-xs text-indigo-600 font-bold px-1">Owner</span>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleRemoveMember(m.id)}
+                                            className="text-slate-400 hover:text-red-500 transition"
+                                            title="Remove Member"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <button
                     onClick={() => setShowAddMemberModal(true)}
                     className="mt-4 flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800"
@@ -218,7 +269,14 @@ const GroupDetails = () => {
                     onClick={() => setActiveTab('expenses')}
                     className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
-                    <DollarSign size={18} /> Expenses
+                    {(() => {
+                        const Icon = {
+                            'USD': DollarSign,
+                            'GBP': PoundSterling,
+                            'EUR': Euro
+                        }[group?.currency] || DollarSign;
+                        return <Icon size={18} />;
+                    })()} Expenses
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
@@ -252,7 +310,7 @@ const GroupDetails = () => {
                                     <p className="text-sm text-slate-500">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-lg font-bold text-indigo-600">${Number(expense.amount).toFixed(2)}</span>
+                                    <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
                                     <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
                                 </div>
                                 {isOwner && (
@@ -322,11 +380,11 @@ const GroupDetails = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-medium text-slate-800">{member.name}</h3>
-                                        <p className="text-sm text-slate-500">Paid ${member.total_paid.toFixed(2)} • Share ${member.total_share.toFixed(2)}</p>
+                                        <p className="text-sm text-slate-500">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
                                     </div>
                                 </div>
                                 <div className={clsx("text-right font-bold", member.net_balance >= 0 ? "text-green-600" : "text-red-500")}>
-                                    {member.net_balance >= 0 ? `Gets back $${member.net_balance}` : `Owes $${Math.abs(member.net_balance).toFixed(2)}`}
+                                    {member.net_balance >= 0 ? `Gets back ${currencySymbol}${member.net_balance}` : `Owes ${currencySymbol}${Math.abs(member.net_balance).toFixed(2)}`}
                                 </div>
                             </div>
                         ))}
@@ -350,7 +408,7 @@ const GroupDetails = () => {
                             />
                             <div className="flex gap-2">
                                 <div className="relative flex-grow">
-                                    <span className="absolute left-3 top-2 text-slate-400">$</span>
+                                    <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>
                                     <input
                                         type="number"
                                         placeholder="0.00"

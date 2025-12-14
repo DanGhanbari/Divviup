@@ -1,7 +1,7 @@
 const db = require('../db');
 
 exports.createGroup = async (req, res) => {
-    const { name, description, is_one_time } = req.body;
+    const { name, description, is_one_time, currency } = req.body;
 
     if (!name) {
         return res.status(400).json({ error: 'Group name is required' });
@@ -13,8 +13,8 @@ exports.createGroup = async (req, res) => {
 
         // Create Group
         const groupResult = await client.query(
-            'INSERT INTO groups (name, description, is_one_time, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, description, is_one_time || false, req.user.id]
+            'INSERT INTO groups (name, description, is_one_time, created_by, currency) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, description, is_one_time || false, req.user.id, currency || 'USD']
         );
         const group = groupResult.rows[0];
 
@@ -175,5 +175,41 @@ exports.deleteGroup = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error deleting group' });
+    }
+};
+
+exports.removeMember = async (req, res) => {
+    const { id, userId } = req.params;
+
+    try {
+        // 1. Check permissions (Owner only)
+        const ownerCheck = await db.query(
+            'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [id, req.user.id]
+        );
+
+        if (ownerCheck.rows.length === 0 || ownerCheck.rows[0].role !== 'owner') {
+            return res.status(403).json({ error: 'Only the group owner can remove members' });
+        }
+
+        // 2. Prevent Owner Removal (Use Delete Group instead)
+        if (userId === req.user.id) {
+            return res.status(400).json({ error: 'You cannot remove yourself. Delete the group instead.' });
+        }
+
+        // 3. Remove Member
+        const result = await db.query(
+            'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 RETURNING *',
+            [id, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Member not found in group' });
+        }
+
+        res.json({ message: 'Member removed successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error removing member' });
     }
 };

@@ -9,6 +9,7 @@ const Dashboard = () => {
     const [showModal, setShowModal] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
     const [newGroupDesc, setNewGroupDesc] = useState('');
+    const [newGroupCurrency, setNewGroupCurrency] = useState('USD');
 
     const fetchGroups = async () => {
         try {
@@ -28,10 +29,15 @@ const Dashboard = () => {
     const handleCreateGroup = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/groups', { name: newGroupName, description: newGroupDesc });
+            await api.post('/groups', {
+                name: newGroupName,
+                description: newGroupDesc,
+                currency: newGroupCurrency
+            });
             setShowModal(false);
             setNewGroupName('');
             setNewGroupDesc('');
+            setNewGroupCurrency('USD');
             fetchGroups();
         } catch (err) {
             console.error(err);
@@ -108,6 +114,18 @@ const Dashboard = () => {
                                 value={newGroupDesc}
                                 onChange={(e) => setNewGroupDesc(e.target.value)}
                             />
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                                <select
+                                    value={newGroupCurrency}
+                                    onChange={(e) => setNewGroupCurrency(e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                >
+                                    <option value="USD">USD ($)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                </select>
+                            </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create</button>
