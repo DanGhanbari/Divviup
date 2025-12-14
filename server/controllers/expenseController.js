@@ -2,7 +2,7 @@ const db = require('../db');
 
 exports.createExpense = async (req, res) => {
     const { group_id } = req.params;
-    const { title, amount, split_type, paid_by } = req.body;
+    const { title, amount, split_type, paid_by, splits } = req.body;
 
     if (!title || !amount || !group_id) {
         return res.status(400).json({ error: 'Title, amount and group_id are required' });
@@ -19,7 +19,7 @@ exports.createExpense = async (req, res) => {
         );
         const expense = expenseResult.rows[0];
 
-        // Calculate Splits (Default: Equal)
+        // Calculate Splits
         if (split_type === 'equal' || !split_type) {
             // Get all group members
             const membersResult = await client.query(
@@ -38,8 +38,22 @@ exports.createExpense = async (req, res) => {
                     );
                 }
             }
+        } else if ((split_type === 'percentage' || split_type === 'custom') && splits && Array.isArray(splits)) {
+            // Handle explicit splits provided by frontend
+            let totalSplitAmount = 0;
+            for (const split of splits) {
+                await client.query(
+                    'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                    [expense.id, split.user_id, split.amount]
+                );
+                totalSplitAmount += parseFloat(split.amount);
+            }
+
+            // Basic validation (soft warning in logs if mismatch, but proceeding)
+            if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
+                console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+            }
         }
-        // TODO: Implement other split types (percentage, shares, custom)
 
         await client.query('COMMIT');
         res.status(201).json(expense);
@@ -68,5 +82,83 @@ exports.getGroupExpenses = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error fetching expenses' });
+    }
+};
+
+exports.getGroupBalances = async (req, res) => {
+    const { group_id } = req.params;
+
+    try {
+        // 1. Get total paid by each user
+        const paidResult = await db.query(
+            `SELECT paid_by as user_id, SUM(amount) as total_paid 
+             FROM expenses 
+             WHERE group_id = $1 
+             GROUP BY paid_by`,
+            [group_id]
+        );
+
+        // 2. Get total share allocated to each user
+        const shareResult = await db.query(
+            `SELECT es.user_id, SUM(es.amount_due) as total_share 
+             FROM expense_splits es 
+             JOIN expenses e ON es.expense_id = e.id 
+             WHERE e.group_id = $1 
+             GROUP BY es.user_id`,
+            [group_id]
+        );
+
+        // 3. Get all group members to ensure everyone is included
+        const membersResult = await db.query(
+            `SELECT u.id, u.name, u.email, u.avatar_url 
+             FROM group_members gm 
+             JOIN users u ON gm.user_id = u.id 
+             WHERE gm.group_id = $1`,
+            [group_id]
+        );
+
+        const balances = membersResult.rows.map(member => {
+            const paid = paidResult.rows.find(p => p.user_id === member.id)?.total_paid || 0;
+            const share = shareResult.rows.find(s => s.user_id === member.id)?.total_share || 0;
+            return {
+                ...member,
+                total_paid: parseFloat(paid),
+                total_share: parseFloat(share),
+                net_balance: (parseFloat(paid) - parseFloat(share)).toFixed(2)
+            };
+        });
+
+        res.json(balances);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error fetching balances' });
+    }
+};
+
+exports.deleteExpense = async (req, res) => {
+    const { group_id, id } = req.params;
+
+    try {
+        // Check permissions (Owner only)
+        const memberCheck = await db.query(
+            'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [group_id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
+            return res.status(403).json({ error: 'Only the group owner can delete expenses' });
+        }
+
+        const result = await db.query('DELETE FROM expenses WHERE id = $1 AND group_id = $2 RETURNING *', [id, group_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+
+        res.json({ message: 'Expense deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error deleting expense' });
     }
 };

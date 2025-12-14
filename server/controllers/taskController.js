@@ -60,3 +60,30 @@ exports.toggleTask = async (req, res) => {
         res.status(500).json({ error: 'Server error updating task' });
     }
 };
+
+exports.deleteTask = async (req, res) => {
+    const { group_id, id } = req.params;
+
+    try {
+        // Check permissions (Owner only)
+        const memberCheck = await db.query(
+            'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [group_id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
+            return res.status(403).json({ error: 'Only the group owner can delete tasks' });
+        }
+
+        const result = await db.query('DELETE FROM tasks WHERE id = $1 AND group_id = $2 RETURNING *', [id, group_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        res.json({ message: 'Task deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error deleting task' });
+    }
+};

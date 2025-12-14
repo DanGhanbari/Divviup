@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus } from 'lucide-react';
+import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../context/AuthContext';
 
 const GroupDetails = () => {
     const { id } = useParams();
+    const { user } = useAuth();
     const [group, setGroup] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [activeTab, setActiveTab] = useState('expenses');
+    const [balances, setBalances] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Forms
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal' });
+    const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal', splits: {} });
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -30,6 +33,9 @@ const GroupDetails = () => {
 
             const tasksRes = await api.get(`/groups/${id}/tasks`);
             setTasks(tasksRes.data);
+
+            const balancesRes = await api.get(`/groups/${id}/balances`);
+            setBalances(balancesRes.data);
         } catch (err) {
             console.error(err);
         } finally {
@@ -44,9 +50,21 @@ const GroupDetails = () => {
     const handleAddExpense = async (e) => {
         e.preventDefault();
         try {
-            await api.post(`/groups/${id}/expenses`, newExpense);
+            // Format splits for backend
+            let formattedSplits = [];
+            if (newExpense.split_type === 'percentage') {
+                formattedSplits = group.members.map(m => ({
+                    user_id: m.id,
+                    amount: (newExpense.amount * ((newExpense.splits[m.id] || 0) / 100)).toFixed(2)
+                }));
+            }
+
+            await api.post(`/groups/${id}/expenses`, {
+                ...newExpense,
+                splits: formattedSplits
+            });
             setShowExpenseModal(false);
-            setNewExpense({ title: '', amount: '', split_type: 'equal' });
+            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {} });
             fetchData(); // Refresh
         } catch (err) {
             console.error(err);
@@ -86,6 +104,31 @@ const GroupDetails = () => {
             alert(err.response?.data?.error || 'Failed to add member');
         }
     };
+
+    const handleDeleteExpense = async (expenseId) => {
+        if (!window.confirm('Are you sure you want to delete this expense? This action cannot be undone and will affect balances.')) return;
+        try {
+            await api.delete(`/groups/${id}/expenses/${expenseId}`);
+            setExpenses(expenses.filter(e => e.id !== expenseId));
+            fetchData(); // Refresh balances
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete expense');
+        }
+    };
+
+    const handleDeleteTask = async (taskId) => {
+        if (!window.confirm('Are you sure you want to delete this task?')) return;
+        try {
+            await api.delete(`/groups/${id}/tasks/${taskId}`);
+            setTasks(tasks.filter(t => t.id !== taskId));
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete task');
+        }
+    };
+
+    const isOwner = group?.members.find(m => m.id === user?.id)?.role === 'owner';
 
     if (loading) return <div className="p-8 text-center">Loading...</div>;
     if (!group) return <div className="p-8 text-center text-red-500">Group not found</div>;
@@ -132,6 +175,12 @@ const GroupDetails = () => {
                 >
                     <CheckSquare size={18} /> Tasks
                 </button>
+                <button
+                    onClick={() => setActiveTab('balances')}
+                    className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'balances' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
+                >
+                    <Scale size={18} /> Balances
+                </button>
             </div>
 
             {/* Tab Content */}
@@ -155,6 +204,15 @@ const GroupDetails = () => {
                                     <span className="block text-lg font-bold text-indigo-600">${Number(expense.amount).toFixed(2)}</span>
                                     <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
                                 </div>
+                                {isOwner && (
+                                    <button
+                                        onClick={() => handleDeleteExpense(expense.id)}
+                                        className="ml-4 p-2 text-slate-400 hover:text-red-500 transition"
+                                        title="Delete Expense"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -186,6 +244,39 @@ const GroupDetails = () => {
                                     {task.is_completed && <CheckSquare size={14} />}
                                 </button>
                                 <span className={clsx("flex-grow", task.is_completed && "text-slate-400 line-through")}>{task.title}</span>
+                                {isOwner && (
+                                    <button
+                                        onClick={() => handleDeleteTask(task.id)}
+                                        className="p-2 text-slate-400 hover:text-red-500 transition"
+                                        title="Delete Task"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'balances' && (
+                <div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Group Balances</h2>
+                    <div className="space-y-3">
+                        {balances.map(member => (
+                            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700">
+                                        {member.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-medium text-slate-800">{member.name}</h3>
+                                        <p className="text-sm text-slate-500">Paid ${member.total_paid.toFixed(2)} • Share ${member.total_share.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                                <div className={clsx("text-right font-bold", member.net_balance >= 0 ? "text-green-600" : "text-red-500")}>
+                                    {member.net_balance >= 0 ? `Gets back $${member.net_balance}` : `Owes $${Math.abs(member.net_balance).toFixed(2)}`}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -225,9 +316,31 @@ const GroupDetails = () => {
                                     onChange={(e) => setNewExpense({ ...newExpense, split_type: e.target.value })}
                                 >
                                     <option value="equal">Equal</option>
-                                    {/* Future: <option value="percentage">%</option> */}
+                                    <option value="percentage">Percentage</option>
                                 </select>
                             </div>
+
+                            {newExpense.split_type === 'percentage' && (
+                                <div className="space-y-2 bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-xs font-semibold text-slate-500 uppercase">Split Percentages</p>
+                                    {group.members.map(member => (
+                                        <div key={member.id} className="flex items-center gap-2">
+                                            <span className="text-sm text-slate-700 w-24 truncate">{member.name}</span>
+                                            <input
+                                                type="number"
+                                                placeholder="0"
+                                                className="flex-grow px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                value={newExpense.splits[member.id] || ''}
+                                                onChange={(e) => setNewExpense({
+                                                    ...newExpense,
+                                                    splits: { ...newExpense.splits, [member.id]: parseFloat(e.target.value) }
+                                                })}
+                                            />
+                                            <span className="text-slate-500 text-sm">%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowExpenseModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>

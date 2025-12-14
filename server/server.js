@@ -10,15 +10,13 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/auth', require('./routes/authRoutes'));
-app.use('/groups', require('./routes/groupRoutes'));
-
-// Nested Routes Helper
 const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
-app.use('/groups/:group_id/expenses', expenseRoutes);
+app.use('/auth', require('./routes/authRoutes'));
+app.use('/', expenseRoutes); // Mount at root, paths defined in router
 app.use('/groups/:group_id/tasks', taskRoutes);
+app.use('/groups', require('./routes/groupRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {
