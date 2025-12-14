@@ -59,6 +59,12 @@ const GroupDetails = () => {
             // Format splits for backend
             let formattedSplits = [];
             if (newExpense.split_type === 'percentage') {
+                const totalPercentage = Object.values(newExpense.splits).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+                if (Math.abs(totalPercentage - 100) > 0.1) {
+                    alert(`Percentages must sum to 100%. Current sum: ${totalPercentage}%`);
+                    return;
+                }
+
                 formattedSplits = group.members.map(m => ({
                     user_id: m.id,
                     amount: (newExpense.amount * ((newExpense.splits[m.id] || 0) / 100)).toFixed(2)
@@ -370,7 +376,14 @@ const GroupDetails = () => {
 
             {activeTab === 'balances' && (
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Group Balances</h2>
+                    <div className="bg-slate-800 text-white p-6 rounded-xl shadow-sm mb-6">
+                        <p className="text-slate-400 font-medium mb-1">Total Group Spend</p>
+                        <h2 className="text-3xl font-bold">
+                            {currencySymbol}{expenses.reduce((sum, expense) => sum + Number(expense.amount), 0).toFixed(2)}
+                        </h2>
+                    </div>
+
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Member Balances</h2>
                     <div className="space-y-3">
                         {balances.map(member => (
                             <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between">
@@ -383,8 +396,9 @@ const GroupDetails = () => {
                                         <p className="text-sm text-slate-500">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
                                     </div>
                                 </div>
-                                <div className={clsx("text-right font-bold", member.net_balance >= 0 ? "text-green-600" : "text-red-500")}>
-                                    {member.net_balance >= 0 ? `Gets back ${currencySymbol}${member.net_balance}` : `Owes ${currencySymbol}${Math.abs(member.net_balance).toFixed(2)}`}
+                                <div className={clsx("text-right font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
+                                    {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
+                                    {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
                                 </div>
                             </div>
                         ))}
@@ -446,6 +460,9 @@ const GroupDetails = () => {
                                                 })}
                                             />
                                             <span className="text-slate-500 text-sm">%</span>
+                                            <span className="text-sm font-medium text-slate-600 min-w-[60px] text-right">
+                                                {currencySymbol}{((newExpense.amount || 0) * ((newExpense.splits[member.id] || 0) / 100)).toFixed(2)}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>

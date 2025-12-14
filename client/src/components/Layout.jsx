@@ -38,6 +38,17 @@ const Layout = () => {
             <main className="flex-grow container mx-auto px-4 py-8">
                 <Outlet />
             </main>
+            <footer className="bg-white border-t border-slate-200 mt-auto">
+                <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+                    <div className="flex items-center gap-4 mb-4 md:mb-0">
+                        <span className="font-bold text-slate-700">DivviUp</span>
+                        <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <span>v1.0.0</span>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 };
