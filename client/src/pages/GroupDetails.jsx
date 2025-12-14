@@ -4,16 +4,22 @@ import api from '../api';
 import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useNavigate } from 'react-router-dom';
 
 const GroupDetails = () => {
     const { id } = useParams();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [group, setGroup] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [activeTab, setActiveTab] = useState('expenses');
     const [balances, setBalances] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Modal State
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'danger', onConfirm: null });
 
     // Forms
     const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -105,27 +111,60 @@ const GroupDetails = () => {
         }
     };
 
-    const handleDeleteExpense = async (expenseId) => {
-        if (!window.confirm('Are you sure you want to delete this expense? This action cannot be undone and will affect balances.')) return;
-        try {
-            await api.delete(`/groups/${id}/expenses/${expenseId}`);
-            setExpenses(expenses.filter(e => e.id !== expenseId));
-            fetchData(); // Refresh balances
-        } catch (err) {
-            console.error(err);
-            alert('Failed to delete expense');
-        }
+    const handleDeleteExpense = (expenseId) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Expense',
+            message: 'Are you sure you want to delete this expense? This action cannot be undone and will affect balances.',
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/groups/${id}/expenses/${expenseId}`);
+                    setExpenses(expenses.filter(e => e.id !== expenseId));
+                    fetchData(); // Refresh balances
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to delete expense');
+                }
+            }
+        });
     };
 
-    const handleDeleteTask = async (taskId) => {
-        if (!window.confirm('Are you sure you want to delete this task?')) return;
-        try {
-            await api.delete(`/groups/${id}/tasks/${taskId}`);
-            setTasks(tasks.filter(t => t.id !== taskId));
-        } catch (err) {
-            console.error(err);
-            alert('Failed to delete task');
-        }
+    const handleDeleteTask = (taskId) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Task',
+            message: 'Are you sure you want to delete this task?',
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/groups/${id}/tasks/${taskId}`);
+                    setTasks(tasks.filter(t => t.id !== taskId));
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to delete task');
+                }
+            }
+        });
+    };
+
+    const handleDeleteGroup = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Group',
+            message: 'WARNING: This will permanently delete the group and ALL associated data (members, expenses, tasks). This action cannot be undone.',
+            type: 'danger',
+            confirmText: 'Delete Group',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/groups/${id}`);
+                    navigate('/dashboard');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to delete group');
+                }
+            }
+        });
     };
 
     const isOwner = group?.members.find(m => m.id === user?.id)?.role === 'owner';
@@ -136,9 +175,21 @@ const GroupDetails = () => {
     return (
         <div>
             {/* Header */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">{group.name}</h1>
-                <p className="text-slate-500 mb-4">{group.description}</p>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6 relative">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-800 mb-2">{group.name}</h1>
+                        <p className="text-slate-500 mb-4">{group.description}</p>
+                    </div>
+                    {isOwner && (
+                        <button
+                            onClick={handleDeleteGroup}
+                            className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition flex items-center gap-1 font-medium text-sm"
+                        >
+                            <Trash2 size={16} /> Delete Group
+                        </button>
+                    )}
+                </div>
                 <div className="flex items-center gap-4 text-sm text-slate-500">
                     <div className="flex items-center gap-2">
                         <Users size={16} />
@@ -375,6 +426,19 @@ const GroupDetails = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                }}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type}
+                confirmText={confirmModal.confirmText}
+            />
         </div>
     );
 };
