@@ -84,3 +84,60 @@ exports.getGroupById = async (req, res) => {
         res.status(500).json({ error: 'Server error fetching group details' });
     }
 };
+
+exports.addMember = async (req, res) => {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        // 1. Check permissions (Is current user owner or admin?)
+        const permissionCheck = await db.query(
+            "SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2 AND role IN ('owner', 'admin')",
+            [id, req.user.id]
+        );
+
+        if (permissionCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Only owners or admins can add members' });
+        }
+
+        // 2. Find user by email
+        const userRes = await db.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const newUser = userRes.rows[0];
+
+        // 3. Check if already a member
+        const memberCheck = await db.query(
+            'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [id, newUser.id]
+        );
+
+        if (memberCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'User is already a member' });
+        }
+
+        // 4. Add member
+        await db.query(
+            "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')",
+            [id, newUser.id]
+        );
+
+        res.status(201).json({
+            message: 'Member added',
+            user: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                role: 'member'
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error adding member' });
+    }
+};

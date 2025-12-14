@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { Users, DollarSign, CheckSquare, Plus, Send } from 'lucide-react';
+import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus } from 'lucide-react';
 import clsx from 'clsx';
 
 const GroupDetails = () => {
@@ -16,6 +16,8 @@ const GroupDetails = () => {
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal' });
     const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [newMemberEmail, setNewMemberEmail] = useState('');
 
     const fetchData = async () => {
         try {
@@ -72,6 +74,19 @@ const GroupDetails = () => {
         }
     };
 
+    const handleAddMember = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/groups/${id}/members`, { email: newMemberEmail });
+            setShowAddMemberModal(false);
+            setNewMemberEmail('');
+            fetchData(); // Refresh to show new member
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data?.error || 'Failed to add member');
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading...</div>;
     if (!group) return <div className="p-8 text-center text-red-500">Group not found</div>;
 
@@ -92,8 +107,15 @@ const GroupDetails = () => {
                                 {m.name.charAt(0)}
                             </div>
                         ))}
+
                     </div>
                 </div>
+                <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="mt-4 flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800"
+                >
+                    <UserPlus size={18} /> Add Member
+                </button>
             </div>
 
             {/* Tabs */}
@@ -209,6 +231,32 @@ const GroupDetails = () => {
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowExpenseModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Member Modal */}
+            {showAddMemberModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                        <h2 className="text-xl font-bold mb-4">Add Member</h2>
+                        <form onSubmit={handleAddMember} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    placeholder="friend@example.com"
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    required
+                                    value={newMemberEmail}
+                                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button type="button" onClick={() => setShowAddMemberModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add</button>
                             </div>
                         </form>
                     </div>

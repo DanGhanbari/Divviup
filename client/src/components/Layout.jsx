@@ -6,7 +6,6 @@ import { LogOut, Home, PlusCircle } from 'lucide-react';
 const Layout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-
     const handleLogout = () => {
         logout();
         navigate('/login');

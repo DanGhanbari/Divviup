@@ -8,5 +8,6 @@ router.use(authMiddleware); // Protect all group routes
 router.post('/', groupController.createGroup);
 router.get('/', groupController.getUserGroups);
 router.get('/:id', groupController.getGroupById);
+router.post('/:id/members', groupController.addMember);
 
 module.exports = router;
