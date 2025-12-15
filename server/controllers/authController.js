@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const emailService = require('../utils/emailService');
 
 exports.register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -28,6 +29,11 @@ exports.register = async (req, res) => {
 
         // Generate Token
         const token = jwt.sign({ id: newUser.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        // Send Welcome Email
+        // Use setImmediate or don't await if you don't want to block response
+        // But for keeping it simple and catching errors we can await or just fire and forget
+        emailService.sendWelcomeEmail(newUser.rows[0].email, newUser.rows[0].name);
 
         res.status(201).json({ user: newUser.rows[0], token });
     } catch (err) {
