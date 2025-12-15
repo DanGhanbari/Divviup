@@ -36,6 +36,92 @@ db.query('SELECT NOW()')
     .then(res => console.log('✅ Database connected successfully:', res.rows[0].now))
     .catch(err => console.error('❌ Database connection failed:', err));
 
+// TEMPORARY: Setup Database Route
+app.get('/setup-db', async (req, res) => {
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              name TEXT NOT NULL,
+              email TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              avatar_url TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS groups (
+              id SERIAL PRIMARY KEY,
+              name TEXT NOT NULL,
+              description TEXT,
+              is_one_time BOOLEAN DEFAULT FALSE,
+              currency VARCHAR(10) DEFAULT 'USD',
+              created_by INTEGER REFERENCES users(id),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS group_members (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+              role TEXT CHECK (role IN ('owner', 'admin', 'member')) DEFAULT 'member',
+              joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(group_id, user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS expenses (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              paid_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              title TEXT NOT NULL,
+              amount DECIMAL(10, 2) NOT NULL,
+              split_type TEXT CHECK (split_type IN ('equal', 'percentage', 'share', 'custom')) DEFAULT 'equal',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS expense_splits (
+              id SERIAL PRIMARY KEY,
+              expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE,
+              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+              amount_due DECIMAL(10, 2) NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS shopping_items (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              name TEXT NOT NULL,
+              quantity TEXT,
+              added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              is_completed BOOLEAN DEFAULT FALSE,
+              completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS tasks (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              title TEXT NOT NULL,
+              assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              due_date TIMESTAMP,
+              is_completed BOOLEAN DEFAULT FALSE,
+              completed_at TIMESTAMP,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS messages (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+              message TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        res.send('✅ Database tables created successfully! You can now use the app.');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('❌ Error setup database: ' + err.message);
+    }
+});
+
 // Routes
 const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
