@@ -243,7 +243,7 @@ const GroupDetails = () => {
             onConfirm: async () => {
                 try {
                     await api.delete(`/groups/${id}`);
-                    navigate('/dashboard');
+                    navigate('/'); // Root is the dashboard
                 } catch (err) {
                     console.error(err);
                     alert('Failed to delete group');
