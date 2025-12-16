@@ -133,7 +133,28 @@ const GroupDetails = () => {
         }
     };
 
-    // ... (handleAddTask, toggleTask remain same)
+    const handleAddTask = async (e) => {
+        e.preventDefault();
+        if (!newTaskTitle.trim()) return;
+        try {
+            const res = await api.post(`/groups/${id}/tasks`, { title: newTaskTitle });
+            setTasks([res.data, ...tasks]);
+            setNewTaskTitle('');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to add task');
+        }
+    };
+
+    const toggleTask = async (taskId) => {
+        try {
+            const res = await api.patch(`/groups/${id}/tasks/${taskId}/toggle`);
+            setTasks(tasks.map(t => t.id === taskId ? res.data : t));
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update task');
+        }
+    };
 
     const handleAddMember = async (e) => {
         e.preventDefault();
