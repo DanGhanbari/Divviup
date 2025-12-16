@@ -76,24 +76,21 @@ const GroupDetails = () => {
             }
 
             if (editingExpenseId) {
-                const res = await api.put(`/groups/${id}/expenses/${editingExpenseId}`, {
+                await api.put(`/groups/${id}/expenses/${editingExpenseId}`, {
                     ...newExpense,
                     splits: formattedSplits
                 });
-                // Update local state directly for smoothness
-                setExpenses(expenses.map(e => e.id === editingExpenseId ? res.data : e));
             } else {
                 await api.post(`/groups/${id}/expenses`, {
                     ...newExpense,
                     splits: formattedSplits
                 });
-                fetchData(); // For new add, easier to refresh
             }
 
             setShowExpenseModal(false);
             setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {} });
             setEditingExpenseId(null);
-            if (editingExpenseId) fetchData(); // Double check refresh for balances
+            fetchData(); // Always refresh from server to ensure correct order and data joins
         } catch (err) {
             console.error(err);
             alert('Failed to save expense');
@@ -390,7 +387,7 @@ const GroupDetails = () => {
                     </div>
 
                     <div className="space-y-3">
-                        {expenses.length === 0 ? <p className="text-slate-500">No expenses yet.</p> : expenses.map(expense => (
+                        {(!expenses || expenses.length === 0) ? <p className="text-slate-500">No expenses yet.</p> : expenses.map(expense => (
                             <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between">
                                 <div>
                                     <h3 className="font-semibold text-slate-800">{expense.title}</h3>
@@ -440,7 +437,7 @@ const GroupDetails = () => {
                     </form>
 
                     <div className="space-y-2">
-                        {tasks.length === 0 ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => (
+                        {(!tasks || tasks.length === 0) ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => (
                             <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3">
                                 <button
                                     onClick={() => toggleTask(task.id)}

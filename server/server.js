@@ -8,23 +8,23 @@ const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
 const allowedOrigins = [
-    'https://divviup.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:5001'
+  'https://divviup.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5001'
 ];
 
 const corsOptions = {
-    origin: function (origin, callback) {
-        // allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-            callback(null, true);
-        } else {
-            console.log('Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -33,13 +33,13 @@ app.use(express.json());
 
 // Log DB Connection on Startup
 db.query('SELECT NOW()')
-    .then(res => console.log('✅ Database connected successfully:', res.rows[0].now))
-    .catch(err => console.error('❌ Database connection failed:', err));
+  .then(res => console.log('✅ Database connected successfully:', res.rows[0].now))
+  .catch(err => console.error('❌ Database connection failed:', err));
 
 // TEMPORARY: Setup Database Route
 app.get('/setup-db', async (req, res) => {
-    try {
-        await db.query(`
+  try {
+    await db.query(`
             CREATE TABLE IF NOT EXISTS users (
               id SERIAL PRIMARY KEY,
               name TEXT NOT NULL,
@@ -115,11 +115,11 @@ app.get('/setup-db', async (req, res) => {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        res.send('✅ Database tables created successfully! You can now use the app.');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('❌ Error setup database: ' + err.message);
-    }
+    res.send('✅ Database tables created successfully! You can now use the app.');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('❌ Error setup database: ' + err.message);
+  }
 });
 
 // Routes
@@ -133,20 +133,25 @@ app.use('/groups', require('./routes/groupRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {
-    res.send('DivviUp API is running');
+  res.send('DivviUp API is running');
 });
 
 // Test DB Connection
 app.get('/api/health', async (req, res) => {
-    try {
-        const result = await db.query('SELECT NOW()');
-        res.json({ status: 'ok', time: result.rows[0].now });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: 'error', error: err.message });
-    }
+  try {
+    const result = await db.query('SELECT NOW()');
+    res.json({ status: 'ok', time: result.rows[0].now });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+// Catch-all for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found. If you are refreshing the page, ensure you are hitting the Frontend URL, not the API URL.' });
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
