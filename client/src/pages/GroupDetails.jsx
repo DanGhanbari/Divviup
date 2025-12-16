@@ -76,39 +76,63 @@ const GroupDetails = () => {
             }
 
             if (editingExpenseId) {
-                await api.put(`/groups/${id}/expenses/${editingExpenseId}`, {
+                const res = await api.put(`/groups/${id}/expenses/${editingExpenseId}`, {
                     ...newExpense,
                     splits: formattedSplits
                 });
+                // Update local state directly for smoothness
+                setExpenses(expenses.map(e => e.id === editingExpenseId ? res.data : e));
             } else {
                 await api.post(`/groups/${id}/expenses`, {
                     ...newExpense,
                     splits: formattedSplits
                 });
+                fetchData(); // For new add, easier to refresh
             }
 
             setShowExpenseModal(false);
             setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {} });
             setEditingExpenseId(null);
-            fetchData(); // Refresh
+            if (editingExpenseId) fetchData(); // Double check refresh for balances
         } catch (err) {
             console.error(err);
             alert('Failed to save expense');
         }
     };
 
-    const handleEditExpense = (expense) => {
-        setEditingExpenseId(expense.id);
-        setNewExpense({
-            title: expense.title,
-            amount: expense.amount,
-            split_type: expense.split_type,
-            splits: {} // We don't have the explicit percentage splits from the GET endpoint easily mapped back without more logic, 
-            // but for now let's start fresh or assume equal. 
-            // IMPROVEMENT: Ideally we'd fetch the specific expense details or map existing splits if we want to show current percentages.
-            // For this MVP step, we'll let them re-enter if they switch to percentage.
-        });
-        setShowExpenseModal(true);
+    const handleEditExpense = async (expense) => {
+        try {
+            // 1. Set ID immediately so UI reacts
+            setEditingExpenseId(expense.id);
+
+            // 2. Fetch full details (including splits)
+            const res = await api.get(`/groups/${id}/expenses/${expense.id}`);
+            const fullExpense = res.data;
+
+            // 3. Map splits to the format expected by state
+            let splitsState = {};
+            if (fullExpense.split_type === 'percentage') {
+                // Convert amounts back to percentages
+                // Formula: (split_amount / total_amount) * 100
+                fullExpense.splits.forEach(s => {
+                    splitsState[s.user_id] = ((parseFloat(s.amount_due) / parseFloat(fullExpense.amount)) * 100).toFixed(0);
+                    // Using toFixed(0) for cleaner UI, or (2) if precise. start with 0.
+                });
+            }
+
+            setNewExpense({
+                title: fullExpense.title,
+                amount: fullExpense.amount,
+                split_type: fullExpense.split_type,
+                splits: splitsState
+            });
+
+            setShowExpenseModal(true);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to load expense details");
+            setEditingExpenseId(null);
+        }
     };
 
     // ... (handleAddTask, toggleTask remain same)

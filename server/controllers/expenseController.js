@@ -149,6 +149,36 @@ exports.getGroupBalances = async (req, res) => {
     }
 };
 
+exports.getExpenseById = async (req, res) => {
+    const { group_id, id } = req.params;
+
+    try {
+        // 1. Get Expense
+        const expenseResult = await db.query(
+            `SELECT * FROM expenses WHERE id = $1 AND group_id = $2`,
+            [id, group_id]
+        );
+
+        if (expenseResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+        const expense = expenseResult.rows[0];
+
+        // 2. Get Splits
+        const splitsResult = await db.query(
+            'SELECT user_id, amount_due FROM expense_splits WHERE expense_id = $1',
+            [id]
+        );
+
+        expense.splits = splitsResult.rows;
+        res.json(expense);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error fetching expense details' });
+    }
+};
+
 exports.updateExpense = async (req, res) => {
     const { group_id, id } = req.params;
     const { title, amount, split_type, paid_by, splits } = req.body;
@@ -182,7 +212,6 @@ exports.updateExpense = async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Expense not found' });
         }
-        const expense = expenseResult.rows[0];
 
         // 3. Clear Existing Splits
         await client.query('DELETE FROM expense_splits WHERE expense_id = $1', [id]);
@@ -202,7 +231,7 @@ exports.updateExpense = async (req, res) => {
                 for (const member of members) {
                     await client.query(
                         'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                        [expense.id, member.user_id, splitAmount]
+                        [expenseResult.rows[0].id, member.user_id, splitAmount]
                     );
                 }
             }
@@ -211,18 +240,28 @@ exports.updateExpense = async (req, res) => {
             for (const split of splits) {
                 await client.query(
                     'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                    [expense.id, split.user_id, split.amount]
+                    [expenseResult.rows[0].id, split.user_id, split.amount]
                 );
                 totalSplitAmount += parseFloat(split.amount);
             }
             // Basic validation
             if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
-                console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+                console.warn(`Expense ${expenseResult.rows[0].id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
             }
         }
 
         await client.query('COMMIT');
-        res.json(expense);
+
+        // 5. Fetch full object again to return "paid_by_name" which the frontend needs
+        const finalResult = await db.query(
+            `SELECT e.*, u.name as paid_by_name 
+             FROM expenses e 
+             JOIN users u ON e.paid_by = u.id 
+             WHERE e.id = $1`,
+            [id]
+        );
+
+        res.json(finalResult.rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(err);

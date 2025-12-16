@@ -10,5 +10,6 @@ router.get('/groups/:group_id/expenses', expenseController.getGroupExpenses);
 router.get('/groups/:group_id/balances', expenseController.getGroupBalances);
 router.delete('/groups/:group_id/expenses/:id', expenseController.deleteExpense);
 router.put('/groups/:group_id/expenses/:id', expenseController.updateExpense);
+router.get('/groups/:group_id/expenses/:id', expenseController.getExpenseById);
 
 module.exports = router;
