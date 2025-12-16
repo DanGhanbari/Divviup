@@ -149,6 +149,89 @@ exports.getGroupBalances = async (req, res) => {
     }
 };
 
+exports.updateExpense = async (req, res) => {
+    const { group_id, id } = req.params;
+    const { title, amount, split_type, paid_by, splits } = req.body;
+
+    if (!title || !amount || !group_id) {
+        return res.status(400).json({ error: 'Title, amount and group_id are required' });
+    }
+
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Check permissions (Owner only)
+        const memberCheck = await client.query(
+            'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [group_id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Only the group owner can update expenses' });
+        }
+
+        // 2. Update Expense Record
+        const expenseResult = await client.query(
+            'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4 WHERE id = $5 AND group_id = $6 RETURNING *',
+            [title, amount, split_type || 'equal', paid_by, id, group_id]
+        );
+
+        if (expenseResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+        const expense = expenseResult.rows[0];
+
+        // 3. Clear Existing Splits
+        await client.query('DELETE FROM expense_splits WHERE expense_id = $1', [id]);
+
+        // 4. Recalculate Splits
+        if (split_type === 'equal' || !split_type) {
+            // Get all group members
+            const membersResult = await client.query(
+                'SELECT user_id FROM group_members WHERE group_id = $1',
+                [group_id]
+            );
+            const members = membersResult.rows;
+
+            if (members.length > 0) {
+                const splitAmount = (amount / members.length).toFixed(2);
+
+                for (const member of members) {
+                    await client.query(
+                        'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                        [expense.id, member.user_id, splitAmount]
+                    );
+                }
+            }
+        } else if ((split_type === 'percentage' || split_type === 'custom') && splits && Array.isArray(splits)) {
+            let totalSplitAmount = 0;
+            for (const split of splits) {
+                await client.query(
+                    'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                    [expense.id, split.user_id, split.amount]
+                );
+                totalSplitAmount += parseFloat(split.amount);
+            }
+            // Basic validation
+            if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
+                console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+            }
+        }
+
+        await client.query('COMMIT');
+        res.json(expense);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ error: 'Server error updating expense' });
+    } finally {
+        client.release();
+    }
+};
+
 exports.deleteExpense = async (req, res) => {
     const { group_id, id } = req.params;
 
