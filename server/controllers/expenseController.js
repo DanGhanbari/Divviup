@@ -117,14 +117,27 @@ exports.getGroupBalances = async (req, res) => {
             [group_id]
         );
 
+        console.log('Calculating balances for group:', group_id);
+        console.log('Paid rows:', paidResult.rows);
+        console.log('Share rows:', shareResult.rows);
+
         const balances = membersResult.rows.map(member => {
-            const paid = paidResult.rows.find(p => p.user_id === member.id)?.total_paid || 0;
-            const share = shareResult.rows.find(s => s.user_id === member.id)?.total_share || 0;
+            // Convert IDs to strings for robust comparison
+            const paidEntry = paidResult.rows.find(p => String(p.user_id) === String(member.id));
+            const shareEntry = shareResult.rows.find(s => String(s.user_id) === String(member.id));
+
+            const paid = paidEntry ? paidEntry.total_paid : 0;
+            const share = shareEntry ? shareEntry.total_share : 0;
+
+            const net_balance = (parseFloat(paid) - parseFloat(share)).toFixed(2);
+
+            console.log(`Member ${member.id} (${member.name}): Paid=${paid}, Share=${share}, Net=${net_balance}`);
+
             return {
                 ...member,
                 total_paid: parseFloat(paid),
                 total_share: parseFloat(share),
-                net_balance: (parseFloat(paid) - parseFloat(share)).toFixed(2)
+                net_balance: net_balance
             };
         });
 
