@@ -93,42 +93,83 @@ exports.addMember = async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
 
+    const client = await db.pool.connect();
+
     try {
+        await client.query('BEGIN');
+
         // 1. Check permissions (Is current user owner or admin?)
-        const permissionCheck = await db.query(
+        const permissionCheck = await client.query(
             "SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2 AND role IN ('owner', 'admin')",
             [id, req.user.id]
         );
 
         if (permissionCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(403).json({ error: 'Only owners or admins can add members' });
         }
 
         // 2. Find user by email
-        const userRes = await db.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
+        const userRes = await client.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
         if (userRes.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'User not found' });
         }
         const newUser = userRes.rows[0];
 
         // 3. Check if already a member
-        const memberCheck = await db.query(
+        const memberCheck = await client.query(
             'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
             [id, newUser.id]
         );
 
         if (memberCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: 'User is already a member' });
         }
 
         // 4. Add member
-        await db.query(
+        await client.query(
             "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')",
             [id, newUser.id]
         );
 
+        // 5. Recalculate "Equal" Expenses
+        // Get all members (now including the new one)
+        const allMembersRes = await client.query('SELECT user_id FROM group_members WHERE group_id = $1', [id]);
+        const allMemberIds = allMembersRes.rows.map(m => m.user_id);
+        const memberCount = allMemberIds.length;
+
+        // Get all equal expenses for this group
+        const equalExpensesRes = await client.query(
+            "SELECT id, amount FROM expenses WHERE group_id = $1 AND split_type = 'equal'",
+            [id]
+        );
+        const equalExpenses = equalExpensesRes.rows;
+
+        if (equalExpenses.length > 0 && memberCount > 0) {
+            console.log(`Recalculating ${equalExpenses.length} equal expenses for ${memberCount} members`);
+
+            for (const expense of equalExpenses) {
+                const newSplitAmount = (parseFloat(expense.amount) / memberCount).toFixed(2);
+
+                // Delete old splits
+                await client.query('DELETE FROM expense_splits WHERE expense_id = $1', [expense.id]);
+
+                // Insert new splits
+                for (const userId of allMemberIds) {
+                    await client.query(
+                        'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                        [expense.id, userId, newSplitAmount]
+                    );
+                }
+            }
+        }
+
+        await client.query('COMMIT');
+
         res.status(201).json({
-            message: 'Member added',
+            message: 'Member added and expenses recalculated',
             user: {
                 id: newUser.id,
                 name: newUser.name,
@@ -137,8 +178,11 @@ exports.addMember = async (req, res) => {
             }
         });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ error: 'Server error adding member' });
+    } finally {
+        client.release();
     }
 };
 
