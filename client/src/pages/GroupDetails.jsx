@@ -121,6 +121,7 @@ const GroupDetails = () => {
                 title: fullExpense.title,
                 amount: fullExpense.amount,
                 split_type: fullExpense.split_type,
+                paid_by: fullExpense.paid_by, // Preserve the original payer
                 splits: splitsState
             });
 
