@@ -1,18 +1,28 @@
 const nodemailer = require('nodemailer');
 
+const port = process.env.EMAIL_PORT || 465; // Default to 465 (SSL) which is often less blocked than 587
+const secure = port == 465; // 465 requires secure: true
+
 const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE, // Support 'gmail' directly if set
+    service: process.env.EMAIL_SERVICE, // Note: If this is set to 'gmail', host/port/secure are ignored by Nodemailer
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true for 465, false for other ports
+    port: port,
+    secure: secure,
     auth: {
         user: process.env.EMAIL_USER || 'divvyupteam@gmail.com',
         pass: process.env.EMAIL_PASS
-    }
+    },
+    // Fail fast if connection hangs
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 });
 
 exports.verifyConnection = async () => {
     try {
+        console.log(`📧 Attempting to connect to email server...`);
+        console.log(`   Config: Service=${process.env.EMAIL_SERVICE || 'none'}, Host=${process.env.EMAIL_HOST || 'smtp.gmail.com'}, Port=${port}, Secure=${secure}, User=${process.env.EMAIL_USER || 'default'}`);
+
         await transporter.verify();
         console.log('✅ Email service is ready to send messages');
     } catch (error) {
