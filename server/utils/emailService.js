@@ -1,27 +1,43 @@
 const nodemailer = require('nodemailer');
 
-const port = process.env.EMAIL_PORT || 465; // Default to 465 (SSL) which is often less blocked than 587
-const secure = port == 465; // 465 requires secure: true
+// Prepare auth with sanitized password (remove spaces)
+const emailUser = process.env.EMAIL_USER || 'divvyupteam@gmail.com';
+const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
 
-const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE, // Note: If this is set to 'gmail', host/port/secure are ignored by Nodemailer
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: port,
-    secure: secure,
+let transportConfig = {
     auth: {
-        user: process.env.EMAIL_USER || 'divvyupteam@gmail.com',
-        pass: process.env.EMAIL_PASS
+        user: emailUser,
+        pass: emailPass
     },
     // Fail fast if connection hangs
     connectionTimeout: 10000,
     greetingTimeout: 10000,
-    socketTimeout: 10000
-});
+    socketTimeout: 10000,
+    logger: true, // Log to console
+    debug: true   // Include debug info
+};
+
+// Use service if provided (e.g. 'gmail'), otherwise custom host
+if (process.env.EMAIL_SERVICE) {
+    transportConfig.service = process.env.EMAIL_SERVICE;
+} else {
+    transportConfig.host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    transportConfig.port = parseInt(process.env.EMAIL_PORT) || 465;
+    transportConfig.secure = transportConfig.port === 465;
+}
+
+const transporter = nodemailer.createTransport(transportConfig);
 
 exports.verifyConnection = async () => {
     try {
         console.log(`📧 Attempting to connect to email server...`);
-        console.log(`   Config: Service=${process.env.EMAIL_SERVICE || 'none'}, Host=${process.env.EMAIL_HOST || 'smtp.gmail.com'}, Port=${port}, Secure=${secure}, User=${process.env.EMAIL_USER || 'default'}`);
+        // Dynamically determine values for logging based on transportConfig
+        const currentService = transportConfig.service || 'none';
+        const currentHost = transportConfig.host || 'smtp.gmail.com';
+        const currentPort = transportConfig.port || (transportConfig.service ? 'default' : 465); // If service, port is often implied
+        const currentSecure = transportConfig.secure !== undefined ? transportConfig.secure : (transportConfig.service ? 'default' : (currentPort === 465));
+
+        console.log(`   Config: Service=${currentService}, Host=${currentHost}, Port=${currentPort}, Secure=${currentSecure}, User=${emailUser}`);
 
         await transporter.verify();
         console.log('✅ Email service is ready to send messages');
