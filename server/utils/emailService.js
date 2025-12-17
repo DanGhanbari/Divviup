@@ -1,18 +1,19 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
+    service: process.env.EMAIL_SERVICE, // Support 'gmail' directly if set
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
     secure: false, // true for 465, false for other ports
     auth: {
-        user: process.env.EMAIL_USER || 'ethereal_user', // Generate ethereal user if needed in real dev
-        pass: process.env.EMAIL_PASS || 'ethereal_pass'
+        user: process.env.EMAIL_USER || 'divvyupteam@gmail.com',
+        pass: process.env.EMAIL_PASS
     }
 });
 
 exports.sendWelcomeEmail = async (email, name) => {
     try {
-        const supportEmail = process.env.SUPPORT_EMAIL || 'support@divviup.com';
+        const supportEmail = process.env.SUPPORT_EMAIL || 'divvyupteam@gmail.com';
         const appLink = process.env.APP_LINK || 'http://localhost:5173';
 
         const subject = 'Welcome to DivvyUp!';
@@ -49,7 +50,7 @@ The DivvyUp Team`;
 `;
 
         const info = await transporter.sendMail({
-            from: `"DivvyUp Team" <${process.env.EMAIL_USER || 'no-reply@divviup.com'}>`,
+            from: `"DivvyUp Team" <${process.env.EMAIL_USER || 'divvyupteam@gmail.com'}>`,
             to: email,
             subject: subject,
             text: text,
