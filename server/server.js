@@ -126,21 +126,7 @@ app.get('/setup-db', async (req, res) => {
   }
 });
 
-// Routes
-const expenseRoutes = require('./routes/expenseRoutes');
-const taskRoutes = require('./routes/taskRoutes');
-
-app.use('/auth', require('./routes/authRoutes'));
-app.use('/', expenseRoutes); // Mount at root, paths defined in router
-app.use('/groups/:group_id/tasks', taskRoutes);
-app.use('/groups', require('./routes/groupRoutes'));
-
-// Basic Health Check
-app.get('/', (req, res) => {
-  res.send('DivviUp API is running');
-});
-
-// Test Email Route
+// Test Email Route (Public)
 app.get('/api/test-email', async (req, res) => {
   try {
     console.log('Testing email...');
@@ -159,6 +145,20 @@ app.get('/api/test-email', async (req, res) => {
     console.error(err);
     res.status(500).json({ status: 'error', error: err.message });
   }
+});
+
+// Routes
+const expenseRoutes = require('./routes/expenseRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+
+app.use('/auth', require('./routes/authRoutes'));
+app.use('/', expenseRoutes); // Mount at root, paths defined in router
+app.use('/groups/:group_id/tasks', taskRoutes);
+app.use('/groups', require('./routes/groupRoutes'));
+
+// Basic Health Check
+app.get('/', (req, res) => {
+  res.send('DivviUp API is running');
 });
 
 // Test DB Connection
