@@ -4,7 +4,10 @@ const nodemailer = require('nodemailer');
 const emailUser = process.env.EMAIL_USER || 'divvyupteam@gmail.com';
 const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
 
-let transportConfig = {
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: emailUser,
         pass: emailPass
@@ -13,31 +16,14 @@ let transportConfig = {
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000,
-    logger: true, // Log to console
-    debug: true   // Include debug info
-};
-
-// Use service if provided (e.g. 'gmail'), otherwise custom host
-if (process.env.EMAIL_SERVICE) {
-    transportConfig.service = process.env.EMAIL_SERVICE;
-} else {
-    transportConfig.host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-    transportConfig.port = parseInt(process.env.EMAIL_PORT) || 465;
-    transportConfig.secure = transportConfig.port === 465;
-}
-
-const transporter = nodemailer.createTransport(transportConfig);
+    logger: true,
+    debug: true
+});
 
 exports.verifyConnection = async () => {
     try {
         console.log(`📧 Attempting to connect to email server...`);
-        // Dynamically determine values for logging based on transportConfig
-        const currentService = transportConfig.service || 'none';
-        const currentHost = transportConfig.host || 'smtp.gmail.com';
-        const currentPort = transportConfig.port || (transportConfig.service ? 'default' : 465); // If service, port is often implied
-        const currentSecure = transportConfig.secure !== undefined ? transportConfig.secure : (transportConfig.service ? 'default' : (currentPort === 465));
-
-        console.log(`   Config: Service=${currentService}, Host=${currentHost}, Port=${currentPort}, Secure=${currentSecure}, User=${emailUser}`);
+        console.log(`   Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${emailUser}`);
 
         await transporter.verify();
         console.log('✅ Email service is ready to send messages');
