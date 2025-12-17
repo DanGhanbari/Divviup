@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+exports.verifyConnection = async () => {
+    try {
+        await transporter.verify();
+        console.log('✅ Email service is ready to send messages');
+    } catch (error) {
+        console.error('❌ Email service not ready:', error);
+    }
+};
+
 exports.sendWelcomeEmail = async (email, name) => {
     try {
         const supportEmail = process.env.SUPPORT_EMAIL || 'divvyupteam@gmail.com';
@@ -64,6 +73,6 @@ The DivvyUp Team`;
 
     } catch (error) {
         console.error("Error sending welcome email:", error);
-        // Don't crash the request if email fails
+        return { success: false, error: error.message };
     }
 };

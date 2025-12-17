@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const db = require('./db');
+const emailService = require('./utils/emailService');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,7 +34,10 @@ app.use(express.json());
 
 // Log DB Connection on Startup
 db.query('SELECT NOW()')
-  .then(res => console.log('✅ Database connected successfully:', res.rows[0].now))
+  .then(res => {
+    console.log('✅ Database connected successfully:', res.rows[0].now);
+    emailService.verifyConnection(); // Verify email connection
+  })
   .catch(err => console.error('❌ Database connection failed:', err));
 
 // TEMPORARY: Setup Database Route
@@ -134,6 +138,27 @@ app.use('/groups', require('./routes/groupRoutes'));
 // Basic Health Check
 app.get('/', (req, res) => {
   res.send('DivviUp API is running');
+});
+
+// Test Email Route
+app.get('/api/test-email', async (req, res) => {
+  try {
+    console.log('Testing email...');
+    const result = await emailService.sendWelcomeEmail('divvyupteam@gmail.com', 'DivviUp Admin');
+
+    if (result && result.success === false) {
+      return res.status(500).json({ status: 'error', error: result.error, detailed: 'Check server logs' });
+    }
+
+    if (result && result.messageId) {
+      res.json({ status: 'success', messageId: result.messageId, preview: result.preview });
+    } else {
+      res.status(500).json({ status: 'error', error: 'Unknown email error', result });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', error: err.message });
+  }
 });
 
 // Test DB Connection
