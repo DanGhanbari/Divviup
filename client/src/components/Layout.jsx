@@ -15,12 +15,12 @@ const Layout = () => {
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <header className="sticky top-0 z-50 bg-indigo-50/80 backdrop-blur-xl border-b border-indigo-200/50 transition-all duration-200">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <Link to="/" className="text-2xl font-bold tracking-tight flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
+                    <Link to="/dashboard" className="text-2xl font-bold tracking-tight flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
                         DivviUp
                     </Link>
 
                     <nav className="flex items-center gap-2">
-                        <Link to="/" className="flex items-center gap-1.5 px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-100 hover:shadow-sm transition-all font-medium text-sm">
+                        <Link to="/dashboard" className="flex items-center gap-1.5 px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-100 hover:shadow-sm transition-all font-medium text-sm">
                             <Home size={16} /> Dashboard
                         </Link>
                         <div className="pl-4 ml-2 border-l border-slate-200 flex items-center gap-3">

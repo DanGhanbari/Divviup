@@ -72,7 +72,7 @@ const Dashboard = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {groups.map((group) => (
-                        <Link key={group.id} to={`/groups/${group.id}`} className="block group">
+                        <Link key={group.id} to={`groups/${group.id}`} className="block group">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-100 transition h-full flex flex-col">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="bg-indigo-100 text-indigo-600 p-3 rounded-lg">
