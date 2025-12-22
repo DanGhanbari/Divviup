@@ -7,8 +7,8 @@ const Layout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const handleLogout = () => {
-        logout();
         navigate('/');
+        logout();
     };
 
     return (
