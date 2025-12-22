@@ -6,7 +6,7 @@ const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 465,
+    port: 465, // Force 465 for Gmail SSL (587 appears blocked)
     secure: true, // true for 465, false for other ports
     auth: {
         user: emailUser,
