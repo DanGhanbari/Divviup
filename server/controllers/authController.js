@@ -31,9 +31,13 @@ exports.register = async (req, res) => {
         const token = jwt.sign({ id: newUser.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         // Send Welcome Email
-        // Use setImmediate or don't await if you don't want to block response
-        // But for keeping it simple and catching errors we can await or just fire and forget
-        emailService.sendWelcomeEmail(newUser.rows[0].email, newUser.rows[0].name);
+        // Send Welcome Email
+        try {
+            await emailService.sendWelcomeEmail(newUser.rows[0].email, newUser.rows[0].name);
+        } catch (emailErr) {
+            console.error('Failed to send welcome email:', emailErr);
+            // Don't block registration if email fails, but log it
+        }
 
         res.status(201).json({ user: newUser.rows[0], token });
     } catch (err) {
