@@ -15,7 +15,7 @@ const Layout = () => {
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <header className="sticky top-0 z-50 bg-indigo-50/80 backdrop-blur-xl border-b border-indigo-200/50 transition-all duration-200">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <Link to="/dashboard" className="text-2xl font-bold tracking-tight flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
+                    <Link to="/dashboard" className="text-2xl font-bold tracking-tight flex items-center gap-2 text-slate-800 hover:text-indigo-600 transition-colors">
                         DivviUp
                     </Link>
 
