@@ -6,8 +6,8 @@ const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: false, // true for 465, false for other ports
+    port: parseInt(process.env.EMAIL_PORT) || 465,
+    secure: true, // true for 465, false for other ports
     auth: {
         user: emailUser,
         pass: emailPass
@@ -15,9 +15,9 @@ const transporter = nodemailer.createTransport({
     // Network settings
     family: 4, // Force IPv4
     // Fail fast if connection hangs
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
+    connectionTimeout: 10000, // 10s
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     logger: true,
     debug: true
 });
