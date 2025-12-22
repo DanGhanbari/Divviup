@@ -49,7 +49,8 @@ const LandingPage = () => {
                 </div>
 
                 {/* Abstract Background Decoration */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-indigo-100 to-purple-100 rounded-full blur-3xl opacity-50 -z-10" />
+                {/* Abstract Background Decoration */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] sm:w-[800px] h-[500px] sm:h-[800px] bg-gradient-to-tr from-indigo-100 to-purple-100 rounded-full blur-3xl opacity-50 -z-10 pointer-events-none" />
             </header>
 
             {/* Features Grid */}
