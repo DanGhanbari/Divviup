@@ -370,10 +370,10 @@ const GroupDetails = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-4 mb-4 sm:mb-6 border-b border-slate-200">
+            <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-slate-200 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('expenses')}
-                    className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
+                    className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
                     {(() => {
                         const Icon = {
@@ -386,13 +386,13 @@ const GroupDetails = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
-                    className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'tasks' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
+                    className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'tasks' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
                     <CheckSquare size={18} /> Tasks
                 </button>
                 <button
                     onClick={() => setActiveTab('balances')}
-                    className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'balances' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
+                    className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'balances' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
                     <Scale size={18} /> Balances
                 </button>
@@ -561,15 +561,15 @@ const GroupDetails = () => {
                                             <input
                                                 type="number"
                                                 placeholder="0"
-                                                className="flex-grow px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                className="flex-grow min-w-[3rem] px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-indigo-500 outline-none"
                                                 value={newExpense.splits[member.id] || ''}
                                                 onChange={(e) => setNewExpense({
                                                     ...newExpense,
                                                     splits: { ...newExpense.splits, [member.id]: parseFloat(e.target.value) }
                                                 })}
                                             />
-                                            <span className="text-slate-500 text-sm">%</span>
-                                            <span className="text-sm font-medium text-slate-600 min-w-[60px] text-right">
+                                            <span className="text-slate-500 text-sm flex-shrink-0">%</span>
+                                            <span className="text-sm font-medium text-slate-600 min-w-[60px] text-right flex-shrink-0">
                                                 {currencySymbol}{((newExpense.amount || 0) * ((newExpense.splits[member.id] || 0) / 100)).toFixed(2)}
                                             </span>
                                         </div>
