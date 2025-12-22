@@ -5,11 +5,15 @@ const emailUser = process.env.EMAIL_USER || 'divvyupteam@gmail.com';
 const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Built-in config for Gmail (automatically handles host/port/secure)
+    host: 'smtp.gmail.com', // Explicit host
+    port: 587, // Explicit Port 587 (STARTTLS)
+    secure: false, // Must be false for 587
     auth: {
         user: emailUser,
         pass: emailPass
     },
+    // Network settings
+    family: 4, // Force IPv4
     logger: true,
     debug: true
 });
