@@ -306,7 +306,7 @@ const GroupDetails = () => {
     return (
         <div>
             {/* Header */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6 relative">
+            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 mb-4 sm:mb-6 relative">
                 <div className="flex justify-between items-start">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-800 mb-2">{group.name}</h1>
@@ -370,7 +370,7 @@ const GroupDetails = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-4 mb-6 border-b border-slate-200">
+            <div className="flex items-center gap-4 mb-4 sm:mb-6 border-b border-slate-200">
                 <button
                     onClick={() => setActiveTab('expenses')}
                     className={clsx("pb-2 px-4 font-medium flex items-center gap-2 transition", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
@@ -557,7 +557,7 @@ const GroupDetails = () => {
                                     <p className="text-xs font-semibold text-slate-500 uppercase">Split Percentages</p>
                                     {group.members.map(member => (
                                         <div key={member.id} className="flex items-center gap-2">
-                                            <span className="text-sm text-slate-700 w-24 truncate">{member.name}</span>
+                                            <span className="text-sm text-slate-700 w-20 sm:w-24 truncate flex-shrink-0">{member.name}</span>
                                             <input
                                                 type="number"
                                                 placeholder="0"
