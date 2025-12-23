@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Home, PlusCircle } from 'lucide-react';
+import { LogOut, Home, PlusCircle, Settings } from 'lucide-react';
 
 const Layout = () => {
     const { user, logout } = useAuth();
@@ -27,6 +27,13 @@ const Layout = () => {
                             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm" title={user?.name}>
                                 {user?.name?.charAt(0)}
                             </div>
+                            <Link
+                                to="/dashboard/settings"
+                                className="text-slate-500 hover:text-indigo-600 p-2 rounded-full hover:bg-slate-50 transition-colors"
+                                title="Settings"
+                            >
+                                <Settings size={18} />
+                            </Link>
                             <button
                                 onClick={handleLogout}
                                 className="text-slate-500 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"

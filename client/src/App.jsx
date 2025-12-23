@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupDetails from './pages/GroupDetails'; // Coming soon
+import Settings from './pages/Settings';
 
 import LandingPage from './pages/LandingPage';
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="/dashboard" element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="groups/:id" element={<GroupDetails />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </AuthProvider>
