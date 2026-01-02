@@ -10,6 +10,8 @@ import Settings from './pages/Settings';
 
 import LandingPage from './pages/LandingPage';
 
+import { Analytics } from '@vercel/analytics/react';
+
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -34,6 +36,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
+        <Analytics />
       </AuthProvider>
     </BrowserRouter>
   );
