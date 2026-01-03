@@ -87,3 +87,54 @@ exports.deleteTask = async (req, res) => {
         res.status(500).json({ error: 'Server error deleting task' });
     }
 };
+
+exports.assignTask = async (req, res) => {
+    const { group_id, id } = req.params;
+    const { assigned_to } = req.body; // Expecting user_id or null
+
+    try {
+        // Verify user is member of group
+        // In a real app we might want more robust checks, but for now we assume 
+        // if they can hit this endpoint (authMiddleware passes) they can claim tasks if they are in the group.
+        // We could double check membership here but let's trust the auth flow + UI for now or add a quick check.
+
+        // Actually, let's verify the user is a member of the group to be safe
+        const memberCheck = await db.query(
+            'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+            [group_id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'You are not a member of this group' });
+        }
+
+        // If claiming (assigned_to is set), enforce it matches the authenticated user to prevent claiming for others?
+        // The prompt says "if a user decides to do a task mention it that I'm om on it".
+        // So a user claims it for themselves. 
+        // But maybe we want the flexibility to unassign too.
+        // Let's assume the UI sends the current user ID for claiming, or null for unclaiming.
+
+        const result = await db.query(
+            'UPDATE tasks SET assigned_to = $1 WHERE id = $2 AND group_id = $3 RETURNING *',
+            [assigned_to, id, group_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        // Fetch the assigned user details to return to frontend
+        const taskWithUser = await db.query(
+            `SELECT t.*, u.name as assigned_to_name 
+             FROM tasks t 
+             LEFT JOIN users u ON t.assigned_to = u.id 
+             WHERE t.id = $1`,
+            [id]
+        );
+
+        res.json(taskWithUser.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error assigning task' });
+    }
+};

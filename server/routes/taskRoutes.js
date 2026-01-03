@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.post('/', taskController.createTask);
 router.get('/', taskController.getGroupTasks);
 router.patch('/:id/toggle', taskController.toggleTask);
+router.patch('/:id/assign', taskController.assignTask);
 router.delete('/:id', taskController.deleteTask);
 
 module.exports = router;

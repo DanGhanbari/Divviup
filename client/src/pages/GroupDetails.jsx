@@ -156,6 +156,30 @@ const GroupDetails = () => {
         }
     };
 
+    const handleClaimTask = async (taskId) => {
+        try {
+            // If already assigned to current user, unclaim (assigned_to = null)
+            // If not assigned, claim (assigned_to = user.id)
+            // Logic: Find task, check assignment.
+            const task = tasks.find(t => t.id === taskId);
+            const isAssignedToMe = task.assigned_to === user.id;
+
+            const payload = {
+                assigned_to: isAssignedToMe ? null : user.id
+            };
+
+            const res = await api.patch(`/groups/${id}/tasks/${taskId}/assign`, payload);
+
+            // Backend returns the updated task with assigned_to_name
+            // We need to update the state
+            setTasks(tasks.map(t => t.id === taskId ? res.data : t));
+
+        } catch (err) {
+            console.error(err);
+            alert('Failed to claim/unclaim task');
+        }
+    };
+
     const handleAddMember = async (e) => {
         e.preventDefault();
 
@@ -459,26 +483,60 @@ const GroupDetails = () => {
                     </form>
 
                     <div className="space-y-2">
-                        {(!tasks || tasks.length === 0) ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => (
-                            <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3">
-                                <button
-                                    onClick={() => toggleTask(task.id)}
-                                    className={clsx("w-6 h-6 rounded border flex items-center justify-center transition", task.is_completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300 hover:border-indigo-500")}
-                                >
-                                    {task.is_completed && <CheckSquare size={14} />}
-                                </button>
-                                <span className={clsx("flex-grow", task.is_completed && "text-slate-400 line-through")}>{task.title}</span>
-                                {isOwner && (
+                        {(!tasks || tasks.length === 0) ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => {
+                            const isAssigned = !!task.assigned_to;
+                            const isAssignedToMe = task.assigned_to === user.id;
+
+                            return (
+                                <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3">
                                     <button
-                                        onClick={() => handleDeleteTask(task.id)}
-                                        className="p-2 text-slate-400 hover:text-red-500 transition"
-                                        title="Delete Task"
+                                        onClick={() => toggleTask(task.id)}
+                                        disabled={isAssigned && !isAssignedToMe}
+                                        className={clsx(
+                                            "w-6 h-6 rounded border flex items-center justify-center transition",
+                                            task.is_completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300",
+                                            (isAssigned && !isAssignedToMe) ? "opacity-50 cursor-not-allowed bg-slate-100" : "hover:border-indigo-500"
+                                        )}
+                                        title={isAssigned && !isAssignedToMe ? `Assigned to ${task.assigned_to_name}` : "Mark as completed"}
                                     >
-                                        <Trash2 size={16} />
+                                        {task.is_completed && <CheckSquare size={14} />}
                                     </button>
-                                )}
-                            </div>
-                        ))}
+                                    <div className="flex-grow">
+                                        <span className={clsx("block", task.is_completed && "text-slate-400 line-through")}>{task.title}</span>
+                                        {isAssigned ? (
+                                            <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                                <span className="font-medium text-indigo-600">
+                                                    {isAssignedToMe ? "You are on it" : `${task.assigned_to_name} is on it`}
+                                                </span>
+                                                {isAssignedToMe && (
+                                                    <button onClick={() => handleClaimTask(task.id)} className="text-xs text-slate-400 hover:text-slate-600 underline ml-2">
+                                                        Unclaim
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            !task.is_completed && (
+                                                <button
+                                                    onClick={() => handleClaimTask(task.id)}
+                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-0.5 flex items-center gap-1"
+                                                >
+                                                    I'm on it
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => handleDeleteTask(task.id)}
+                                            className="p-2 text-slate-400 hover:text-red-500 transition"
+                                            title="Delete Task"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             )}
