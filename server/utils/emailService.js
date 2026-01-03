@@ -38,15 +38,20 @@ exports.sendWelcomeEmail = async (email, name) => {
             return { success: false, error: 'Resend API key missing' };
         }
 
-        const data = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM || 'DivviUp <team@divviup.xyz>',
             to: email,
             subject: subject,
             html: html
         });
 
-        console.log("Message sent: %s", data.id);
-        return data;
+        if (error) {
+            console.error("Error from Resend:", error);
+            return { success: false, error };
+        }
+
+        console.log("Message sent: %s", data?.id);
+        return { success: true, messageId: data?.id };
 
     } catch (error) {
         console.error("Error sending welcome email:", error);
@@ -81,15 +86,20 @@ exports.sendInvitationEmail = async (email, inviterName, groupName) => {
             return { success: false, error: 'Resend API key missing' };
         }
 
-        const data = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM || 'DivviUp <team@divviup.xyz>',
             to: email,
             subject: subject,
             html: html
         });
 
-        console.log("Invitation sent: %s", data.id);
-        return data;
+        if (error) {
+            console.error("Error from Resend:", error);
+            return { success: false, error };
+        }
+
+        console.log("Invitation sent: %s", data?.id);
+        return { success: true, messageId: data?.id };
 
     } catch (error) {
         console.error("Error sending invitation email:", error);

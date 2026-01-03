@@ -10,6 +10,8 @@ const PORT = process.env.PORT || 5000;
 // CORS Configuration
 const allowedOrigins = [
   'https://divviup.vercel.app',
+  'https://divviup.xyz',
+  'https://www.divviup.xyz',
   'http://localhost:5173',
   'http://localhost:5001'
 ];
