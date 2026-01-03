@@ -53,3 +53,46 @@ exports.sendWelcomeEmail = async (email, name) => {
         return { success: false, error: error.message };
     }
 };
+
+exports.sendInvitationEmail = async (email, inviterName, groupName) => {
+    try {
+        const supportEmail = process.env.SUPPORT_EMAIL || 'team@divviup.xyz';
+        const appLink = process.env.APP_LINK || 'https://divviup.xyz';
+        const registerLink = `${appLink}/register?email=${encodeURIComponent(email)}`;
+
+        const subject = `${inviterName} invited you to join ${groupName} on DivviUp`;
+
+        const html = `
+<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+    <p>Hi there,</p>
+    <p><strong>${inviterName}</strong> has invited you to join the group <strong>"${groupName}"</strong> on <strong>DivviUp</strong>.</p>
+    <p>DivviUp makes it easy to split expenses and keep track of shared costs.</p>
+    <p>To join the group, you'll need to create an account first.</p>
+    <p>👉 <a href="${registerLink}" style="color: #4F46E5; font-weight: bold; text-decoration: none;">Create an account to join</a></p>
+    <p>Or visit: ${registerLink}</p>
+    <p>If you have any questions, you can reply to this email or contact us at <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+    <br>
+    <p>Best regards,<br>The DivviUp Team</p>
+</div>
+`;
+
+        if (!resend) {
+            console.error("Resend API key not configured. Invitation not sent.");
+            return { success: false, error: 'Resend API key missing' };
+        }
+
+        const data = await resend.emails.send({
+            from: process.env.EMAIL_FROM || 'DivviUp <team@divviup.xyz>',
+            to: email,
+            subject: subject,
+            html: html
+        });
+
+        console.log("Invitation sent: %s", data.id);
+        return data;
+
+    } catch (error) {
+        console.error("Error sending invitation email:", error);
+        return { success: false, error: error.message };
+    }
+};

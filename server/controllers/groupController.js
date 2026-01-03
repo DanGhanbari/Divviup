@@ -257,3 +257,54 @@ exports.removeMember = async (req, res) => {
         res.status(500).json({ error: 'Server error removing member' });
     }
 };
+
+exports.sendInvitation = async (req, res) => {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        // 1. Check permissions (Owner/Admin only)
+        const memberCheck = await db.query(
+            "SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2 AND role IN ('owner', 'admin')",
+            [id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Only owners or admins can invite members' });
+        }
+
+        // 2. Check if user already exists (if so, they should just be added, not invited via email flow for non-users)
+        // Although the prompt says "if that member has not signed up yet... send invitation"
+        // The duplicate check in addMember likely fails before this if the UI calls addMember first.
+        // But if the UI calls this endpoint specifically after failure...
+
+        const userCheck = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (userCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'User already exists. Please add them directly.' });
+        }
+
+        // 3. Get Group & Inviter Info
+        const groupRes = await db.query('SELECT name FROM groups WHERE id = $1', [id]);
+        const groupName = groupRes.rows[0]?.name || 'Group';
+
+        const inviterRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const inviterName = inviterRes.rows[0]?.name || 'A member';
+
+        // 4. Send Email
+        const emailService = require('../utils/emailService'); // Late import if not at top, or ensure it's at top
+        // It is likely at top of file, let's verify or just assume standard `const emailService = require('../utils/emailService');` exists.
+        // Verified in previous steps it IS 'require(../utils/emailService)' at top.
+
+        await emailService.sendInvitationEmail(email, inviterName, groupName);
+
+        res.json({ message: 'Invitation sent successfully' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error sending invitation' });
+    }
+};

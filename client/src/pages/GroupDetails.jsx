@@ -180,6 +180,27 @@ const GroupDetails = () => {
         }
     };
 
+    const handleSendInvitation = async () => {
+        try {
+            const emailToSend = newMemberEmail;
+            await api.post(`/groups/${id}/invite`, { email: emailToSend });
+            setShowAddMemberModal(false);
+            setNewMemberEmail('');
+
+            setConfirmModal({
+                isOpen: true,
+                title: 'Invitation Sent',
+                message: `An email invitation has been successfully sent to ${emailToSend}.`,
+                type: 'success',
+                confirmText: 'OK',
+                onConfirm: () => { } // Just close
+            });
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data?.error || 'Failed to send invitation');
+        }
+    };
+
     const handleAddMember = async (e) => {
         e.preventDefault();
 
@@ -189,8 +210,22 @@ const GroupDetails = () => {
                 setShowAddMemberModal(false);
                 setNewMemberEmail('');
                 fetchData(); // Refresh to show new member
+                fetchData(); // Refresh to show new member
             } catch (err) {
                 console.error(err);
+                if (err.response && err.response.status === 404 && err.response.data.error === 'User not found') {
+                    // User doesn't exist, prompt to invite
+                    setConfirmModal({
+                        isOpen: true,
+                        title: 'User Not Found',
+                        message: 'This user has not signed up for DivviUp yet. Would you like to send them an email invitation?',
+                        type: 'info',
+                        confirmText: 'Send Invitation',
+                        onConfirm: handleSendInvitation
+                    });
+                    // Don't close the add member modal yet in case they cancel
+                    return;
+                }
                 alert(err.response?.data?.error || 'Failed to add member');
             }
         };
