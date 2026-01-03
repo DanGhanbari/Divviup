@@ -14,8 +14,8 @@ exports.verifyConnection = async () => {
 
 exports.sendWelcomeEmail = async (email, name) => {
     try {
-        const supportEmail = process.env.SUPPORT_EMAIL || 'divvyupteam@gmail.com';
-        const appLink = process.env.APP_LINK || 'http://localhost:5173';
+        const supportEmail = process.env.SUPPORT_EMAIL || 'team@divviup.xyz';
+        const appLink = process.env.APP_LINK || 'https://divviup.xyz'; // Updating app link too since they have a domain
 
         const subject = 'Welcome to DivvyUp!';
 
@@ -39,7 +39,7 @@ exports.sendWelcomeEmail = async (email, name) => {
         }
 
         const data = await resend.emails.send({
-            from: 'DivvyUp <onboarding@resend.dev>',
+            from: process.env.EMAIL_FROM || 'DivvyUp <team@divviup.xyz>',
             to: email,
             subject: subject,
             html: html
