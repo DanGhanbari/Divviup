@@ -17,19 +17,19 @@ exports.sendWelcomeEmail = async (email, name) => {
         const supportEmail = process.env.SUPPORT_EMAIL || 'team@divviup.xyz';
         const appLink = process.env.APP_LINK || 'https://divviup.xyz'; // Updating app link too since they have a domain
 
-        const subject = 'Welcome to DivvyUp!';
+        const subject = 'Welcome to DivviUp!';
 
         const html = `
 <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
     <p>Hi <strong>${name}</strong>,</p>
-    <p>Welcome to <strong>DivvyUp</strong> — we’re glad to have you.</p>
-    <p>DivvyUp helps you manage shared expenses clearly and fairly, so everyone knows what they owe and why.</p>
+    <p>Welcome to <strong>DivviUp</strong> — we’re glad to have you.</p>
+    <p>DivviUp helps you manage shared expenses clearly and fairly, so everyone knows what they owe and why.</p>
     <p>To get started, create your first group and add an expense. It only takes a moment and gives you a full overview of shared costs.</p>
     <p>👉 <a href="${appLink}" style="color: #4F46E5; font-weight: bold; text-decoration: none;">Get started: ${appLink}</a></p>
     <p>If you have any questions or need support, you can reach us at <a href="mailto:${supportEmail}">${supportEmail}</a>. We’re here to help.</p>
-    <p>Thank you for choosing DivvyUp.</p>
+    <p>Thank you for choosing DivviUp.</p>
     <br>
-    <p>Best regards,<br>The DivvyUp Team</p>
+    <p>Best regards,<br>The DivviUp Team</p>
 </div>
 `;
 
@@ -39,7 +39,7 @@ exports.sendWelcomeEmail = async (email, name) => {
         }
 
         const data = await resend.emails.send({
-            from: process.env.EMAIL_FROM || 'DivvyUp <team@divviup.xyz>',
+            from: process.env.EMAIL_FROM || 'DivviUp <team@divviup.xyz>',
             to: email,
             subject: subject,
             html: html

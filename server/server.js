@@ -130,7 +130,7 @@ app.get('/setup-db', async (req, res) => {
 app.get('/api/test-email', async (req, res) => {
   try {
     console.log('Testing email...');
-    const result = await emailService.sendWelcomeEmail('divvyupteam@gmail.com', 'DivviUp Admin');
+    const result = await emailService.sendWelcomeEmail('team@divviup.xyz', 'DivviUp Admin');
 
     if (result && result.success === false) {
       return res.status(500).json({ status: 'error', error: result.error, detailed: 'Check server logs' });
