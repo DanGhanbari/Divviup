@@ -214,6 +214,7 @@ const GroupDetails = () => {
                 confirmText: 'OK',
                 onConfirm: () => { } // Just close
             });
+            fetchData(); // Refresh to show pending member
         } catch (err) {
             console.error(err);
             alert(err.response?.data?.error || 'Failed to send invitation');
