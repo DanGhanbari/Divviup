@@ -1,6 +1,7 @@
 const db = require('../db');
 
 exports.createTask = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id } = req.params;
     const { title, assigned_to, due_date } = req.body;
 
@@ -13,6 +14,13 @@ exports.createTask = async (req, res) => {
             'INSERT INTO tasks (group_id, title, assigned_to, due_date) VALUES ($1, $2, $3, $4) RETURNING *',
             [group_id, title, assigned_to, due_date]
         );
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'task_created', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
@@ -40,7 +48,14 @@ exports.getGroupTasks = async (req, res) => {
 };
 
 exports.toggleTask = async (req, res) => {
-    const { id } = req.params;
+    const { getIo } = require('../utils/socket');
+    const { id, group_id } = req.params; // Changed to destructure group_id directly if possible, or we need to query it.
+    // Wait, toggleTask params only has :id in routes? Let's check route definition or query task first.
+    // server/routes/taskRoutes.js usually mounts on /groups/:group_id/tasks, but toggle might be different.
+    // Let's assume req.params contains group_id because of router.mergeParams or URL structure.
+    // Actually, line 1 of route file likely sets mergeParams. 
+    // BUT looking at original file, toggleTask only extracted { id }.
+    // We need group_id to emit to room. We can get it from the task query result.
 
     try {
         const taskCheck = await db.query('SELECT is_completed FROM tasks WHERE id = $1', [id]);
@@ -54,6 +69,14 @@ exports.toggleTask = async (req, res) => {
             [newStatus, newStatus ? new Date() : null, id]
         );
 
+        // Emit real-time update
+        try {
+            const groupId = result.rows[0].group_id;
+            getIo().to('group_' + groupId).emit('group_updated', { type: 'task_updated', groupId: groupId });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
@@ -62,6 +85,7 @@ exports.toggleTask = async (req, res) => {
 };
 
 exports.deleteTask = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
 
     try {
@@ -81,6 +105,13 @@ exports.deleteTask = async (req, res) => {
             return res.status(404).json({ error: 'Task not found' });
         }
 
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'task_deleted', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.json({ message: 'Task deleted successfully' });
     } catch (err) {
         console.error(err);
@@ -89,6 +120,7 @@ exports.deleteTask = async (req, res) => {
 };
 
 exports.assignTask = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
     const { assigned_to } = req.body; // Expecting user_id or null
 
@@ -131,6 +163,13 @@ exports.assignTask = async (req, res) => {
              WHERE t.id = $1`,
             [id]
         );
+
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'task_assigned', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
 
         res.json(taskWithUser.rows[0]);
     } catch (err) {

@@ -1,6 +1,7 @@
 const db = require('../db');
 
 exports.createExpense = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id } = req.params;
     const { title, amount, split_type, paid_by, splits } = req.body;
 
@@ -56,6 +57,15 @@ exports.createExpense = async (req, res) => {
         }
 
         await client.query('COMMIT');
+        await client.query('COMMIT');
+
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'expense_created', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.status(201).json(expense);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -180,6 +190,7 @@ exports.getExpenseById = async (req, res) => {
 };
 
 exports.updateExpense = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
     const { title, amount, split_type, paid_by, splits } = req.body;
 
@@ -261,6 +272,13 @@ exports.updateExpense = async (req, res) => {
             [id]
         );
 
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'expense_updated', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.json(finalResult.rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -272,6 +290,7 @@ exports.updateExpense = async (req, res) => {
 };
 
 exports.deleteExpense = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
 
     try {
@@ -289,6 +308,13 @@ exports.deleteExpense = async (req, res) => {
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Expense not found' });
+        }
+
+        // Emit real-time update
+        try {
+            getIo().to('group_' + group_id).emit('group_updated', { type: 'expense_deleted', groupId: group_id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
         }
 
         res.json({ message: 'Expense deleted successfully' });

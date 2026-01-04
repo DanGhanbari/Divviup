@@ -104,6 +104,7 @@ exports.getGroupById = async (req, res) => {
 };
 
 exports.addMember = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { id } = req.params;
     const { email } = req.body;
 
@@ -186,6 +187,13 @@ exports.addMember = async (req, res) => {
 
         await client.query('COMMIT');
 
+        // Emit real-time update
+        try {
+            getIo().to('group_' + id).emit('group_updated', { type: 'member_added', groupId: id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
+        }
+
         res.status(201).json({
             message: 'Member added and expenses recalculated',
             user: {
@@ -241,6 +249,7 @@ exports.deleteGroup = async (req, res) => {
 };
 
 exports.removeMember = async (req, res) => {
+    const { getIo } = require('../utils/socket');
     const { id, userId } = req.params;
 
     try {
@@ -267,6 +276,13 @@ exports.removeMember = async (req, res) => {
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Member not found in group' });
+        }
+
+        // Emit real-time update
+        try {
+            getIo().to('group_' + id).emit('group_updated', { type: 'member_removed', groupId: id });
+        } catch (ioErr) {
+            console.error("Socket emit failed:", ioErr);
         }
 
         res.json({ message: 'Member removed successfully' });
