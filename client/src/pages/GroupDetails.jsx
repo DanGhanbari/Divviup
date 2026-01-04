@@ -406,6 +406,8 @@ const GroupDetails = () => {
                                     <span className="text-sm text-slate-700">{m.name}</span>
                                     {m.role === 'owner' ? (
                                         <span className="text-xs text-indigo-600 font-bold px-1">Owner</span>
+                                    ) : m.role === 'pending' ? (
+                                        <span className="text-xs text-orange-500 font-bold px-1 bg-orange-50 rounded border border-orange-100">Pending</span>
                                     ) : (
                                         <button
                                             onClick={() => handleRemoveMember(m.id)}

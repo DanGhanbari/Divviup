@@ -120,6 +120,16 @@ app.get('/setup-db', async (req, res) => {
               message TEXT NOT NULL,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS group_invitations (
+              id SERIAL PRIMARY KEY,
+              group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+              email TEXT NOT NULL,
+              invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              status TEXT CHECK (status IN ('pending', 'accepted')) DEFAULT 'pending',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(group_id, email)
+            );
         `);
     res.send('✅ Database tables created successfully! You can now use the app.');
   } catch (err) {

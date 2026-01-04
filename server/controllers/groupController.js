@@ -76,7 +76,25 @@ exports.getGroupById = async (req, res) => {
         );
 
         const group = groupResult.rows[0];
-        group.members = membersResult.rows;
+
+        // Fetch Pending Invitations
+        const pendingInvites = await db.query(
+            "SELECT id, email, status, created_at FROM group_invitations WHERE group_id = $1 AND status = 'pending'",
+            [groupId]
+        );
+
+        // Format invitations to look similar to members for the frontend, or pass separate
+        // Let's pass them as part of members but with role = 'pending'
+        const pendingMembers = pendingInvites.rows.map(invite => ({
+            id: `invite-${invite.id}`, // Temporary ID
+            name: invite.email, // Use email as name
+            email: invite.email,
+            avatar_url: null,
+            role: 'pending',
+            joined_at: invite.created_at
+        }));
+
+        group.members = [...membersResult.rows, ...pendingMembers];
 
         res.json(group);
     } catch (err) {
@@ -260,11 +278,13 @@ exports.removeMember = async (req, res) => {
 
 exports.sendInvitation = async (req, res) => {
     const { id } = req.params;
-    const { email } = req.body;
+    const { email: rawEmail } = req.body;
 
-    if (!email) {
+    if (!rawEmail) {
         return res.status(400).json({ error: 'Email is required' });
     }
+
+    const email = rawEmail.toLowerCase(); // Normalize email
 
     try {
         // 1. Check permissions (Owner/Admin only)
@@ -294,7 +314,21 @@ exports.sendInvitation = async (req, res) => {
         const inviterRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
         const inviterName = inviterRes.rows[0]?.name || 'A member';
 
-        // 4. Send Email
+        // 4. Store Invitation
+        // Check if invitation already exists
+        const existingInvite = await db.query(
+            'SELECT * FROM group_invitations WHERE group_id = $1 AND email = $2',
+            [id, email]
+        );
+
+        if (existingInvite.rows.length === 0) {
+            await db.query(
+                'INSERT INTO group_invitations (group_id, email, invited_by) VALUES ($1, $2, $3)',
+                [id, email, req.user.id]
+            );
+        }
+
+        // 5. Send Email
         const emailService = require('../utils/emailService'); // Late import if not at top, or ensure it's at top
         // It is likely at top of file, let's verify or just assume standard `const emailService = require('../utils/emailService');` exists.
         // Verified in previous steps it IS 'require(../utils/emailService)' at top.

@@ -4,11 +4,13 @@ const db = require('../db');
 const emailService = require('../utils/emailService');
 
 exports.register = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email: rawEmail, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !rawEmail || !password) {
         return res.status(400).json({ error: 'All fields are required' });
     }
+
+    const email = rawEmail.toLowerCase(); // Normalize email
 
     try {
         // Check if user exists
@@ -26,6 +28,36 @@ exports.register = async (req, res) => {
             'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
             [name, email, hashedPassword]
         );
+
+        // Check for pending invitations (Case insensitive check, though we normalized email above)
+        // We also want to ensure we match invitations that might have been saved with mixed case
+        const pendingInvites = await db.query(
+            "SELECT * FROM group_invitations WHERE LOWER(email) = LOWER($1) AND status = 'pending'",
+            [email]
+        );
+
+        if (pendingInvites.rows.length > 0) {
+            console.log(`Found ${pendingInvites.rows.length} pending invites for ${email}`);
+            for (const invite of pendingInvites.rows) {
+                // Add to group
+                try {
+                    await db.query(
+                        "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING",
+                        [invite.group_id, newUser.rows[0].id]
+                    );
+
+                    // Mark invited accepted
+                    await db.query(
+                        "UPDATE group_invitations SET status = 'accepted' WHERE id = $1",
+                        [invite.id]
+                    );
+                    console.log(`Automatically added user ${newUser.rows[0].id} to group ${invite.group_id}`);
+
+                } catch (inviteErr) {
+                    console.error("Error processing invite:", inviteErr);
+                }
+            }
+        }
 
         // Generate Token
         const token = jwt.sign({ id: newUser.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
