@@ -491,33 +491,35 @@ const GroupDetails = () => {
 
                     <div className="space-y-3">
                         {(!expenses || expenses.length === 0) ? <p className="text-slate-500">No expenses yet.</p> : expenses.map(expense => (
-                            <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold text-slate-800">{expense.title}</h3>
-                                    <p className="text-sm text-slate-500">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
+                            <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between gap-4">
+                                <div className="flex-grow min-w-0">
+                                    <h3 className="font-semibold text-slate-800 truncate" title={expense.title}>{expense.title}</h3>
+                                    <p className="text-sm text-slate-500 truncate">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
-                                    <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
-                                </div>
-                                {isOwner && (
-                                    <div className="flex gap-1 ml-4">
-                                        <button
-                                            onClick={() => handleEditExpense(expense)}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 transition"
-                                            title="Edit Expense"
-                                        >
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteExpense(expense.id)}
-                                            className="p-2 text-slate-400 hover:text-red-500 transition"
-                                            title="Delete Expense"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+                                    <div className="text-right">
+                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
+                                        <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
                                     </div>
-                                )}
+                                    {isOwner && (
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => handleEditExpense(expense)}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 transition"
+                                                title="Edit Expense"
+                                            >
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteExpense(expense.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 transition"
+                                                title="Delete Expense"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
