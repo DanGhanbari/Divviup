@@ -34,16 +34,8 @@ app.use(cors(corsOptions));
 // app.options('*', cors(corsOptions)); // Removed to prevent Express 5 PathError
 app.use(express.json());
 
-// Log DB Connection on Startup
-db.query('SELECT NOW()')
-  .then(res => {
-    console.log('✅ Database connected successfully:', res.rows[0].now);
-    emailService.verifyConnection(); // Verify email connection
-  })
-  .catch(err => console.error('❌ Database connection failed:', err));
-
-// TEMPORARY: Setup Database Route
-app.get('/setup-db', async (req, res) => {
+// Initialize Database Schema
+const initDb = async () => {
   try {
     await db.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -131,6 +123,25 @@ app.get('/setup-db', async (req, res) => {
               UNIQUE(group_id, email)
             );
         `);
+    console.log('✅ Database schema initialized successfully');
+  } catch (err) {
+    console.error('❌ Error initializing database schema:', err);
+  }
+};
+
+// Log DB Connection on Startup and Init DB
+db.query('SELECT NOW()')
+  .then(res => {
+    console.log('✅ Database connected successfully:', res.rows[0].now);
+    emailService.verifyConnection(); // Verify email connection
+    initDb(); // Auto-migrate tables
+  })
+  .catch(err => console.error('❌ Database connection failed:', err));
+
+// TEMPORARY: Setup Database Route (Keep for manual trigger if needed)
+app.get('/setup-db', async (req, res) => {
+  try {
+    await initDb();
     res.send('✅ Database tables created successfully! You can now use the app.');
   } catch (err) {
     console.error(err);
