@@ -80,3 +80,13 @@ CREATE TABLE messages (
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE group_invitations (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  status TEXT CHECK (status IN ('pending', 'accepted')) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(group_id, email)
+);
