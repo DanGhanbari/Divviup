@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const emailService = require('../utils/emailService');
+const { getIo } = require('../utils/socket');
 
 exports.register = async (req, res) => {
     const { name, email: rawEmail, password } = req.body;
@@ -52,6 +53,14 @@ exports.register = async (req, res) => {
                         [invite.id]
                     );
                     console.log(`Automatically added user ${newUser.rows[0].id} to group ${invite.group_id}`);
+
+                    // Emit real-time update
+                    try {
+                        getIo().to('group_' + invite.group_id).emit('group_updated', { type: 'member_added', groupId: invite.group_id });
+                        console.log(`Emitted member_added event to group_${invite.group_id}`);
+                    } catch (ioErr) {
+                        console.error("Socket emit failed:", ioErr);
+                    }
 
                 } catch (inviteErr) {
                     console.error("Error processing invite:", inviteErr);

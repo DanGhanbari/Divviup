@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
 require('dotenv').config();
 const db = require('./db');
 const emailService = require('./utils/emailService');
+const socketUtil = require('./utils/socket');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
@@ -200,6 +203,9 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found. If you are refreshing the page, ensure you are hitting the Frontend URL, not the API URL.' });
 });
 
-app.listen(PORT, () => {
+// Initialize Socket.io
+socketUtil.init(server);
+
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

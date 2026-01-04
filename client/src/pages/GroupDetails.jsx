@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
+import { socket } from '../socket';
 
 const GroupDetails = () => {
     const { id } = useParams();
@@ -51,6 +52,24 @@ const GroupDetails = () => {
 
     useEffect(() => {
         fetchData();
+
+        // Connect to socket
+        socket.connect();
+        socket.emit('join_group', id);
+
+        // Listen for updates
+        socket.on('group_updated', (data) => {
+            if (data.groupId == id) {
+                console.log('Received group update:', data);
+                fetchData();
+            }
+        });
+
+        return () => {
+            socket.emit('leave_group', id);
+            socket.off('group_updated');
+            socket.disconnect();
+        };
     }, [id]);
 
     const [editingExpenseId, setEditingExpenseId] = useState(null);
