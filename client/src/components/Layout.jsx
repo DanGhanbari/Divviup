@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, Home, PlusCircle, Settings } from 'lucide-react';
+import pkg from '../../package.json';
 
 const Layout = () => {
     const { user, logout } = useAuth();
@@ -55,7 +56,7 @@ const Layout = () => {
                         <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <span>v1.0.0</span>
+                        <span>v{pkg.version}</span>
                     </div>
                 </div>
             </footer>
