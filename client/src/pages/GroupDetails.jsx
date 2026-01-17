@@ -31,7 +31,6 @@ const GroupDetails = () => {
 
     const fetchData = async () => {
         try {
-            setLoading(true);
             const groupRes = await api.get(`/groups/${id}`);
             setGroup(groupRes.data);
 
@@ -45,13 +44,16 @@ const GroupDetails = () => {
             setBalances(balancesRes.data);
         } catch (err) {
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
+        const init = async () => {
+            setLoading(true);
+            await fetchData();
+            setLoading(false);
+        };
+        init();
 
         // Connect to socket
         socket.connect();
@@ -229,7 +231,6 @@ const GroupDetails = () => {
                 await api.post(`/groups/${id}/members`, { email: newMemberEmail });
                 setShowAddMemberModal(false);
                 setNewMemberEmail('');
-                fetchData(); // Refresh to show new member
                 fetchData(); // Refresh to show new member
             } catch (err) {
                 console.error(err);
@@ -497,7 +498,7 @@ const GroupDetails = () => {
                                     <p className="text-sm text-slate-500 truncate">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-                                    <div className="text-right">
+                                    <div className="text-right mr-2">
                                         <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
                                         <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
                                     </div>
