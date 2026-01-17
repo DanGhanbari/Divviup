@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
@@ -19,6 +19,12 @@ const PrivateRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    if (window.location.hostname === 'divviup.vercel.app') {
+      window.location.replace(`https://divviup.xyz${window.location.pathname}${window.location.search}`);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
