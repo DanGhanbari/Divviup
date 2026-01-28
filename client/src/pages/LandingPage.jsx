@@ -42,7 +42,7 @@ const LandingPage = () => {
                                 Start for Free <ArrowRight size={20} />
                             </Link>
                             <Link to="/login" className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-full text-lg font-bold hover:bg-slate-50 transition">
-                                View Demo Group
+                                View Dashboard
                             </Link>
                         </div>
                     </motion.div>
