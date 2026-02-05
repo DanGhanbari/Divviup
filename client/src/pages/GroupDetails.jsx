@@ -566,7 +566,7 @@ const GroupDetails = () => {
 
                                     {/* Unified Right Side Container (Receipt + Mobile Actions) */}
                                     {/* Swapped: Now before Amount */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex sm:hidden items-center gap-2">
                                         {expense.receipt_path && (
                                             <button
                                                 onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
@@ -590,7 +590,7 @@ const GroupDetails = () => {
                                     </div>
 
                                     {/* Swapped: Amount Last (on Desktop) */}
-                                    <div className="text-right hidden sm:block min-w-[5rem]">
+                                    <div className="text-right hidden sm:block min-w-[6rem]">
                                         <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(0)}</span>
                                     </div>
 
