@@ -519,53 +519,83 @@ const GroupDetails = () => {
                             <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                 <div className="flex-grow min-w-0 flex flex-col gap-1">
                                     <div className="flex justify-between items-start sm:block">
-                                        <h3 className="font-semibold text-slate-800 break-words leading-tight mr-2 sm:mr-0">{expense.title}</h3>
+                                        <h3 className="font-semibold text-slate-800 break-words leading-tight mr-2 sm:mr-0" title={expense.title}>{expense.title}</h3>
                                         <span className="sm:hidden block text-lg font-bold text-indigo-600 whitespace-nowrap">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
                                     </div>
-                                    <p className="text-sm text-slate-500 truncate">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 mt-1 sm:mt-0">
-                                    <div className="text-right mr-2 hidden sm:block">
-                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
-                                    </div>
-
                                     <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-2">
-                                            {expense.receipt_path && (
-                                                <button
-                                                    onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
-                                                    className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
-                                                    title="View Receipt"
-                                                >
-                                                    <Paperclip size={12} />
-                                                    <span className="hidden sm:inline">View</span>
-                                                </button>
-                                            )}
-                                            <span className="text-xs text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded">{expense.split_type}</span>
-                                        </div>
+                                        <p className="text-sm text-slate-500 truncate">
+                                            Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}
+                                        </p>
+                                        <span className="hidden sm:inline-block text-[10px] text-slate-400 uppercase bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{expense.split_type}</span>
+                                        {expense.receipt_path && (
+                                            <button
+                                                onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
+                                                className="hidden sm:flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
+                                                title="View Receipt"
+                                            >
+                                                <Paperclip size={12} />
+                                                <span className="hidden sm:inline">Receipt</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
+                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 mt-1 sm:mt-0">
+
+                                    {/* Swapped: Actions First (on Desktop) */}
+                                    <div className="hidden sm:flex items-center gap-1">
                                         {(isOwner || isAdmin || expense.paid_by === user.id) && (
-                                            <div className="flex gap-1 ml-2 pl-2 border-l border-slate-100">
+                                            <>
                                                 <button
                                                     onClick={() => handleEditExpense(expense)}
-                                                    className="p-1.5 sm:p-2 text-slate-400 hover:text-indigo-600 transition"
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 transition"
                                                     title="Edit Expense"
                                                 >
                                                     <Pencil size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteExpense(expense.id)}
-                                                    className="p-1.5 sm:p-2 text-slate-400 hover:text-red-500 transition"
+                                                    className="p-2 text-slate-400 hover:text-red-500 transition"
                                                     title="Delete Expense"
                                                 >
                                                     <Trash2 size={18} />
                                                 </button>
-                                            </div>
+                                            </>
                                         )}
                                     </div>
+
+                                    {/* Unified Right Side Container (Receipt + Mobile Actions) */}
+                                    {/* Swapped: Now before Amount */}
+                                    <div className="flex items-center gap-2">
+                                        {expense.receipt_path && (
+                                            <button
+                                                onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
+                                                className="sm:hidden flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
+                                                title="View Receipt"
+                                            >
+                                                <Paperclip size={14} />
+                                                <span className="hidden sm:inline">Receipt</span>
+                                            </button>
+                                        )}
+
+                                        {/* Mobile Actions (Visible Only on Mobile) */}
+                                        <div className="flex sm:hidden gap-1 ml-2 pl-2 border-l border-slate-100">
+                                            {(isOwner || isAdmin || expense.paid_by === user.id) && (
+                                                <>
+                                                    <button onClick={() => handleEditExpense(expense)} className="p-1.5 text-slate-400 hover:text-indigo-600"><Pencil size={16} /></button>
+                                                    <button onClick={() => handleDeleteExpense(expense.id)} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Swapped: Amount Last (on Desktop) */}
+                                    <div className="text-right hidden sm:block">
+                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(0)}</span>
+                                    </div>
+
                                 </div>
-                            </div>
-                        ))}
+                            </div>))}
                     </div>
                 </div>
             )}
