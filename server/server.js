@@ -10,6 +10,12 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
+// Ensure uploads directory exists
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
 // CORS Configuration
 const allowedOrigins = [
   'https://divviup.vercel.app',
