@@ -217,15 +217,28 @@ exports.updateExpense = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Check permissions (Owner only)
+        // 1. Check permissions
+        // Get user role
         const memberCheck = await client.query(
             'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
             [group_id, req.user.id]
         );
+        const userRole = memberCheck.rows.length > 0 ? memberCheck.rows[0].role : null;
 
-        if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
+        // Get expense details to check paid_by
+        const expenseCheck = await client.query('SELECT paid_by FROM expenses WHERE id = $1', [id]);
+        if (expenseCheck.rows.length === 0) {
             await client.query('ROLLBACK');
-            return res.status(403).json({ error: 'Only the group owner can update expenses' });
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+        const expensePayer = expenseCheck.rows[0].paid_by;
+
+        // Allow if: Group Owner OR Group Admin OR Payer of the expense
+        const isAuthorized = (userRole === 'owner' || userRole === 'admin') || (expensePayer === req.user.id);
+
+        if (!isAuthorized) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'You do not have permission to edit this expense' });
         }
 
         // 2. Update Expense Record
@@ -327,24 +340,41 @@ exports.updateExpense = async (req, res) => {
 
 exports.deleteExpense = async (req, res) => {
     const { getIo } = require('../utils/socket');
+    const client = await db.pool.connect();
     const { group_id, id } = req.params;
 
     try {
-        // Check permissions (Owner only)
-        const memberCheck = await db.query(
+        await client.query('BEGIN');
+
+        // Check permissions
+        const memberCheck = await client.query(
             'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
             [group_id, req.user.id]
         );
+        const userRole = memberCheck.rows.length > 0 ? memberCheck.rows[0].role : null;
 
-        if (memberCheck.rows.length === 0 || memberCheck.rows[0].role !== 'owner') {
-            return res.status(403).json({ error: 'Only the group owner can delete expenses' });
-        }
-
-        const result = await db.query('DELETE FROM expenses WHERE id = $1 AND group_id = $2 RETURNING *', [id, group_id]);
-
-        if (result.rows.length === 0) {
+        const expenseCheck = await client.query('SELECT paid_by FROM expenses WHERE id = $1', [id]);
+        if (expenseCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Expense not found' });
         }
+        const expensePayer = expenseCheck.rows[0].paid_by;
+
+        const isAuthorized = (userRole === 'owner' || userRole === 'admin') || (expensePayer === req.user.id);
+
+        if (!isAuthorized) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'You do not have permission to delete this expense' });
+        }
+
+        const result = await client.query('DELETE FROM expenses WHERE id = $1 AND group_id = $2 RETURNING *', [id, group_id]);
+
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK'); // Rollback if not found after permission check
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+
+        await client.query('COMMIT');
 
         // Emit real-time update
         try {

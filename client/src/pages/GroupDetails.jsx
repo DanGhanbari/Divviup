@@ -516,15 +516,21 @@ const GroupDetails = () => {
 
                     <div className="space-y-3">
                         {(!expenses || expenses.length === 0) ? <p className="text-slate-500">No expenses yet.</p> : expenses.map(expense => (
-                            <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between gap-4">
-                                <div className="flex-grow min-w-0">
-                                    <h3 className="font-semibold text-slate-800 truncate" title={expense.title}>{expense.title}</h3>
+                            <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                <div className="flex-grow min-w-0 flex flex-col gap-1">
+                                    <div className="flex justify-between items-start sm:block">
+                                        <h3 className="font-semibold text-slate-800 break-words leading-tight mr-2 sm:mr-0">{expense.title}</h3>
+                                        <span className="sm:hidden block text-lg font-bold text-indigo-600 whitespace-nowrap">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
+                                    </div>
                                     <p className="text-sm text-slate-500 truncate">Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}</p>
                                 </div>
-                                <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-                                    <div className="text-right mr-2">
+                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 mt-1 sm:mt-0">
+                                    <div className="text-right mr-2 hidden sm:block">
                                         <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
-                                        <div className="flex items-center justify-end gap-2">
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2">
                                             {expense.receipt_path && (
                                                 <button
                                                     onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
@@ -532,30 +538,31 @@ const GroupDetails = () => {
                                                     title="View Receipt"
                                                 >
                                                     <Paperclip size={12} />
-                                                    View
+                                                    <span className="hidden sm:inline">View</span>
                                                 </button>
                                             )}
-                                            <span className="text-xs text-slate-400 uppercase">{expense.split_type}</span>
+                                            <span className="text-xs text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded">{expense.split_type}</span>
                                         </div>
+
+                                        {(isOwner || isAdmin || expense.paid_by === user.id) && (
+                                            <div className="flex gap-1 ml-2 pl-2 border-l border-slate-100">
+                                                <button
+                                                    onClick={() => handleEditExpense(expense)}
+                                                    className="p-1.5 sm:p-2 text-slate-400 hover:text-indigo-600 transition"
+                                                    title="Edit Expense"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteExpense(expense.id)}
+                                                    className="p-1.5 sm:p-2 text-slate-400 hover:text-red-500 transition"
+                                                    title="Delete Expense"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                    {isOwner && (
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={() => handleEditExpense(expense)}
-                                                className="p-2 text-slate-400 hover:text-indigo-600 transition"
-                                                title="Edit Expense"
-                                            >
-                                                <Pencil size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteExpense(expense.id)}
-                                                className="p-2 text-slate-400 hover:text-red-500 transition"
-                                                title="Delete Expense"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         ))}
@@ -649,17 +656,23 @@ const GroupDetails = () => {
                     <h2 className="text-xl font-bold text-slate-800 mb-4">Member Balances</h2>
                     <div className="space-y-3">
                         {balances.map(member => (
-                            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700">
+                            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 flex-shrink-0">
                                         {member.name.charAt(0)}
                                     </div>
-                                    <div>
-                                        <h3 className="font-medium text-slate-800">{member.name}</h3>
-                                        <p className="text-sm text-slate-500">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
+                                    <div className="flex-grow sm:flex-grow-0 w-full">
+                                        <div className="flex justify-between items-center sm:block">
+                                            <h3 className="font-medium text-slate-800">{member.name}</h3>
+                                            <div className={clsx("sm:hidden block font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
+                                                {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
+                                                {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-1 sm:mt-0">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
                                     </div>
                                 </div>
-                                <div className={clsx("text-right font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
+                                <div className={clsx("hidden sm:block text-right font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
                                     {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
                                     {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
                                 </div>
@@ -706,21 +719,23 @@ const GroupDetails = () => {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Paid By</label>
-                                        <select
-                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                                            value={newExpense.paid_by || ''}
-                                            onChange={(e) => setNewExpense({ ...newExpense, paid_by: e.target.value })}
-                                        >
-                                            <option value="">Select Payer ({user?.name})</option>
-                                            {group.members.map(member => (
-                                                <option key={member.id} value={member.id}>
-                                                    {member.name} {member.id === user?.id ? '(You)' : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    {(isOwner || isAdmin) && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Paid By</label>
+                                            <select
+                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                                value={newExpense.paid_by || ''}
+                                                onChange={(e) => setNewExpense({ ...newExpense, paid_by: e.target.value })}
+                                            >
+                                                <option value="">Select Payer ({user?.name})</option>
+                                                {group.members.map(member => (
+                                                    <option key={member.id} value={member.id}>
+                                                        {member.name} {member.id === user?.id ? '(You)' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
