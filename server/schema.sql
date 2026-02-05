@@ -41,6 +41,7 @@ CREATE TABLE expenses (
   title TEXT NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   split_type TEXT CHECK (split_type IN ('equal', 'percentage', 'share', 'custom')) DEFAULT 'equal',
+  receipt_path TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -362,6 +362,9 @@ exports.sendInvitation = async (req, res) => {
 exports.generateGroupReport = async (req, res) => {
     const { id } = req.params;
     const PDFDocument = require('pdfkit');
+    const archiver = require('archiver');
+    const path = require('path');
+    const fs = require('fs');
 
     try {
         // 1. Check permissions (Owner/Admin only)
@@ -378,19 +381,8 @@ exports.generateGroupReport = async (req, res) => {
         const groupRes = await db.query('SELECT * FROM groups WHERE id = $1', [id]);
         const group = groupRes.rows[0];
 
-        // Members
-        const membersRes = await db.query(
-            `SELECT u.name, u.email, gm.role 
-             FROM group_members gm 
-             JOIN users u ON gm.user_id = u.id 
-             WHERE gm.group_id = $1`,
-            [id]
-        );
-        const members = membersRes.rows;
-
-        // Expenses
         const expensesRes = await db.query(
-            `SELECT e.title, e.amount, e.created_at, u.name as paid_by 
+            `SELECT e.*, u.name as paid_by_name 
              FROM expenses e 
              LEFT JOIN users u ON e.paid_by = u.id 
              WHERE e.group_id = $1 
@@ -399,60 +391,86 @@ exports.generateGroupReport = async (req, res) => {
         );
         const expenses = expensesRes.rows;
 
-        // Balances (re-calculate or fetch if stored, but let's re-use the balance logic or simplification)
-        // For report simplicity, we might just list members and total spend, OR re-implement the simple balance logic here if needed.
-        // Let's assume user just wants list of expenses and members for now as per "full report".
-        // Actually, let's include the "Net Balance" if we can easily get it.
-        // Re-using the logic from `groupController` or `utils` if it existed would be best. 
-        // For now, let's stick to essential data to avoid duplicating complex balance logic inside this controller unless requested.
-        // Let's add a "Total Group Spend" at least.
-        const totalSpend = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        const currencySymbol = { 'USD': '$', 'GBP': '£', 'EUR': '€' }[group.currency] || '$';
+        const balancesRes = await db.query(
+            `WITH user_paid AS (
+                SELECT paid_by, SUM(amount) as paid 
+                FROM expenses WHERE group_id = $1 GROUP BY paid_by
+            ),
+            user_share AS (
+                SELECT user_id, SUM(amount_due) as share 
+                FROM expense_splits 
+                JOIN expenses ON expense_splits.expense_id = expenses.id 
+                WHERE expenses.group_id = $1 GROUP BY user_id
+            )
+            SELECT u.name, 
+                   COALESCE(up.paid, 0) as paid, 
+                   COALESCE(us.share, 0) as share 
+            FROM group_members gm
+            JOIN users u ON gm.user_id = u.id
+            LEFT JOIN user_paid up ON u.id = up.paid_by
+            LEFT JOIN user_share us ON u.id = us.user_id
+            WHERE gm.group_id = $1`,
+            [id]
+        );
+        const balances = balancesRes.rows;
 
-
-        // 3. Generate PDF
-        const doc = new PDFDocument({ margin: 50 });
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=group_report_${id}.pdf`);
-
-        doc.pipe(res);
-
-        // Header
-        doc.fontSize(20).text(group.name, { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(12).text(group.description || 'No description', { align: 'center', color: 'grey' });
-        doc.moveDown();
-        doc.text(`Total Spend: ${currencySymbol}${totalSpend.toFixed(2)}`, { align: 'center' });
-        doc.moveDown();
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-        doc.moveDown();
-
-        // Members Section
-        doc.fontSize(16).text('Members');
-        doc.moveDown(0.5);
-        doc.fontSize(10);
-
-        members.forEach(m => {
-            doc.text(`${m.name} (${m.email}) - ${m.role}`);
+        // 3. Setup Archive
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Sets the compression level.
         });
 
+        res.attachment(`GroupReport_${group.name.replace(/\s+/g, '_')}.zip`);
+
+        // good practice to catch warnings (ie stat failures and other non-blocking errors)
+        archive.on('warning', function (err) {
+            if (err.code === 'ENOENT') {
+                console.warn(err);
+            } else {
+                throw err;
+            }
+        });
+
+        // good practice to catch this error explicitly
+        archive.on('error', function (err) {
+            console.error('Archive Error:', err);
+            if (!res.headersSent) {
+                res.status(500).send({ error: err.message });
+            }
+        });
+
+        // pipe archive data to the response
+        archive.pipe(res);
+
+        // 4. Generate PDF
+        const doc = new PDFDocument();
+        // Pipe PDF to a buffer to append to archive, OR pipe directly to archive entry
+        // Archiver supports append(stream, { name: 'file.pdf' })
+
+        archive.append(doc, { name: 'GroupReport.pdf' });
+
+        const currencySymbol = group.currency === 'EUR' ? '€' : group.currency === 'GBP' ? '£' : '$';
+
+        doc.fontSize(20).text(`Group Report: ${group.name}`, { align: 'center' });
         doc.moveDown();
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+        doc.fontSize(12).text(`Description: ${group.description || 'N/A'}`);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`);
         doc.moveDown();
 
-        // Expenses Section
-        doc.fontSize(16).text('Expenses Log');
-        doc.moveDown(0.5);
+        // Balances
+        doc.fontSize(16).text('Net Balances', { underline: true });
+        doc.moveDown();
 
-        // Table Header
-        const tableTop = doc.y;
-        doc.fontSize(10).font('Helvetica-Bold');
-        doc.text('Date', 50, tableTop);
-        doc.text('Title', 150, tableTop);
-        doc.text('Paid By', 350, tableTop);
-        doc.text('Amount', 450, tableTop, { align: 'right' });
-        doc.font('Helvetica');
+        balances.forEach(b => {
+            const net = (Number(b.paid) - Number(b.share)).toFixed(2);
+            const color = net >= 0 ? 'green' : 'red';
+            doc.fillColor('black').text(`${b.name}: `)
+                .fillColor(color).text(`${currencySymbol}${net} (Paid: ${currencySymbol}${b.paid}, Share: ${currencySymbol}${b.share})`);
+        });
+        doc.fillColor('black');
+        doc.moveDown(2);
+
+        // Expenses
+        doc.fontSize(16).text('Expenses', { underline: true });
         doc.moveDown();
 
         expenses.forEach((e, i) => {
@@ -464,12 +482,38 @@ exports.generateGroupReport = async (req, res) => {
             const date = new Date(e.created_at).toLocaleDateString();
             doc.text(date, 50, doc.y);
             doc.text(e.title, 150, doc.y, { width: 190, lineBreak: false, ellipsis: true });
-            doc.text(e.paid_by || 'Unknown', 350, doc.y);
+            doc.text(e.paid_by_name || 'Unknown', 350, doc.y);
             doc.text(`${currencySymbol}${Number(e.amount).toFixed(2)}`, 450, doc.y, { align: 'right' });
-            doc.moveDown(0.5);
+
+            if (e.receipt_path) {
+                doc.text('(Receipt Attached in ZIP)', 150, doc.y + 10, { color: 'grey', size: 8 });
+                doc.moveDown(1.5);
+            } else {
+                doc.moveDown(0.5);
+            }
         });
 
         doc.end();
+
+        // 5. Append Receipts to Archive
+        for (const e of expenses) {
+            if (e.receipt_path) {
+                const absolutePath = path.resolve(__dirname, '..', e.receipt_path);
+                if (fs.existsSync(absolutePath)) {
+                    // Create a nice filename: Date_Title_Amount.ext
+                    const ext = path.extname(e.receipt_path);
+                    const safeTitle = e.title.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+                    const dateStr = new Date(e.created_at).toISOString().split('T')[0];
+                    const fileName = `Receipts/${dateStr}_${safeTitle}_${e.amount}${ext}`;
+
+                    archive.file(absolutePath, { name: fileName });
+                } else {
+                    console.warn(`Receipt file not found: ${absolutePath}`);
+                }
+            }
+        }
+
+        await archive.finalize();
 
     } catch (err) {
         console.error(err);

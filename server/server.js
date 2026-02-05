@@ -36,6 +36,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // app.options('*', cors(corsOptions)); // Removed to prevent Express 5 PathError
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+
 
 // Initialize Database Schema
 const initDb = async () => {

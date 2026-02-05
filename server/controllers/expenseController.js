@@ -4,6 +4,7 @@ exports.createExpense = async (req, res) => {
     const { getIo } = require('../utils/socket');
     const { group_id } = req.params;
     const { title, amount, split_type, paid_by, splits } = req.body;
+    const receipt_path = req.file ? req.file.path : null;
 
     if (!title || !amount || !group_id) {
         return res.status(400).json({ error: 'Title, amount and group_id are required' });
@@ -15,8 +16,8 @@ exports.createExpense = async (req, res) => {
 
         // Create Expense
         const expenseResult = await client.query(
-            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [group_id, paid_by || req.user.id, title, amount, split_type || 'equal']
+            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type, receipt_path) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [group_id, paid_by || req.user.id, title, amount, split_type || 'equal', receipt_path]
         );
         const expense = expenseResult.rows[0];
 
@@ -39,24 +40,37 @@ exports.createExpense = async (req, res) => {
                     );
                 }
             }
-        } else if ((split_type === 'percentage' || split_type === 'custom') && splits && Array.isArray(splits)) {
+        } else if ((split_type === 'percentage' || split_type === 'custom') && splits) {
             // Handle explicit splits provided by frontend
-            let totalSplitAmount = 0;
-            for (const split of splits) {
-                await client.query(
-                    'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                    [expense.id, split.user_id, split.amount]
-                );
-                totalSplitAmount += parseFloat(split.amount);
+            // Note: When sending FormData, 'splits' might be a JSON string if sent as text field, 
+            // or we need to ensure it's parsed correctly if the frontend sends it as JSON string stringified.
+            // Multer handles files, but text fields are in req.body.
+            // If splits is a string, parse it.
+            let splitsArray = splits;
+            if (typeof splits === 'string') {
+                try {
+                    splitsArray = JSON.parse(splits);
+                } catch (e) {
+                    console.error("Failed to parse splits JSON", e);
+                }
             }
 
-            // Basic validation (soft warning in logs if mismatch, but proceeding)
-            if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
-                console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+            if (Array.isArray(splitsArray)) {
+                let totalSplitAmount = 0;
+                for (const split of splitsArray) {
+                    await client.query(
+                        'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                        [expense.id, split.user_id, split.amount]
+                    );
+                    totalSplitAmount += parseFloat(split.amount);
+                }
+
+                if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
+                    console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+                }
             }
         }
 
-        await client.query('COMMIT');
         await client.query('COMMIT');
 
         // Emit real-time update
@@ -127,9 +141,9 @@ exports.getGroupBalances = async (req, res) => {
             [group_id]
         );
 
-        console.log('Calculating balances for group:', group_id);
-        console.log('Paid rows:', paidResult.rows);
-        console.log('Share rows:', shareResult.rows);
+        // console.log('Calculating balances for group:', group_id);
+        // console.log('Paid rows:', paidResult.rows);
+        // console.log('Share rows:', shareResult.rows);
 
         const balances = membersResult.rows.map(member => {
             // Convert IDs to strings for robust comparison
@@ -141,7 +155,7 @@ exports.getGroupBalances = async (req, res) => {
 
             const net_balance = (parseFloat(paid) - parseFloat(share)).toFixed(2);
 
-            console.log(`Member ${member.id} (${member.name}): Paid=${paid}, Share=${share}, Net=${net_balance}`);
+            // console.log(`Member ${member.id} (${member.name}): Paid=${paid}, Share=${share}, Net=${net_balance}`);
 
             return {
                 ...member,
@@ -193,6 +207,7 @@ exports.updateExpense = async (req, res) => {
     const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
     const { title, amount, split_type, paid_by, splits } = req.body;
+    const receipt_path = req.file ? req.file.path : undefined; // undefined means no update
 
     if (!title || !amount || !group_id) {
         return res.status(400).json({ error: 'Title, amount and group_id are required' });
@@ -214,10 +229,20 @@ exports.updateExpense = async (req, res) => {
         }
 
         // 2. Update Expense Record
-        const expenseResult = await client.query(
-            'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4 WHERE id = $5 AND group_id = $6 RETURNING *',
-            [title, amount, split_type || 'equal', paid_by, id, group_id]
-        );
+        let updateQuery = 'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4';
+        let queryParams = [title, amount, split_type || 'equal', paid_by];
+        let paramCount = 5;
+
+        if (receipt_path) {
+            updateQuery += `, receipt_path = $${paramCount}`;
+            queryParams.push(receipt_path);
+            paramCount++;
+        }
+
+        updateQuery += ` WHERE id = $${paramCount} AND group_id = $${paramCount + 1} RETURNING *`;
+        queryParams.push(id, group_id);
+
+        const expenseResult = await client.query(updateQuery, queryParams);
 
         if (expenseResult.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -246,18 +271,29 @@ exports.updateExpense = async (req, res) => {
                     );
                 }
             }
-        } else if ((split_type === 'percentage' || split_type === 'custom') && splits && Array.isArray(splits)) {
-            let totalSplitAmount = 0;
-            for (const split of splits) {
-                await client.query(
-                    'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                    [expenseResult.rows[0].id, split.user_id, split.amount]
-                );
-                totalSplitAmount += parseFloat(split.amount);
+        } else if ((split_type === 'percentage' || split_type === 'custom') && splits) {
+            let splitsArray = splits;
+            if (typeof splits === 'string') {
+                try {
+                    splitsArray = JSON.parse(splits);
+                } catch (e) {
+                    console.error("Failed to parse splits JSON", e);
+                }
             }
-            // Basic validation
-            if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
-                console.warn(`Expense ${expenseResult.rows[0].id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+
+            if (Array.isArray(splitsArray)) {
+                let totalSplitAmount = 0;
+                for (const split of splitsArray) {
+                    await client.query(
+                        'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                        [expenseResult.rows[0].id, split.user_id, split.amount]
+                    );
+                    totalSplitAmount += parseFloat(split.amount);
+                }
+                // Basic validation
+                if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
+                    console.warn(`Expense ${expenseResult.rows[0].id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+                }
             }
         }
 
