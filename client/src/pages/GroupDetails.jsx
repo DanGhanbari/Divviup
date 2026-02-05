@@ -118,13 +118,9 @@ const GroupDetails = () => {
             // Important: api client should let browser set Content-Type header for FormData
 
             if (editingExpenseId) {
-                await api.put(`/groups/${id}/expenses/${editingExpenseId}`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await api.put(`/groups/${id}/expenses/${editingExpenseId}`, formData);
             } else {
-                await api.post(`/groups/${id}/expenses`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await api.post(`/groups/${id}/expenses`, formData);
             }
 
             setShowExpenseModal(false);
