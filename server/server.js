@@ -84,6 +84,7 @@ const initDb = async () => {
               title TEXT NOT NULL,
               amount DECIMAL(10, 2) NOT NULL,
               split_type TEXT CHECK (split_type IN ('equal', 'percentage', 'share', 'custom')) DEFAULT 'equal',
+              receipt_path TEXT,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -133,6 +134,9 @@ const initDb = async () => {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(group_id, email)
             );
+
+            -- Migrations
+            ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_path TEXT;
         `);
     console.log('✅ Database schema initialized successfully');
   } catch (err) {
