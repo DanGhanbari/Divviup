@@ -590,7 +590,7 @@ const GroupDetails = () => {
                                     </div>
 
                                     {/* Swapped: Amount Last (on Desktop) */}
-                                    <div className="text-right hidden sm:block">
+                                    <div className="text-right hidden sm:block min-w-[5rem]">
                                         <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(0)}</span>
                                     </div>
 
