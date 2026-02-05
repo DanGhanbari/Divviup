@@ -358,3 +358,123 @@ exports.sendInvitation = async (req, res) => {
         res.status(500).json({ error: 'Server error sending invitation' });
     }
 };
+
+exports.generateGroupReport = async (req, res) => {
+    const { id } = req.params;
+    const PDFDocument = require('pdfkit');
+
+    try {
+        // 1. Check permissions (Owner/Admin only)
+        const memberCheck = await db.query(
+            "SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2 AND role IN ('owner', 'admin')",
+            [id, req.user.id]
+        );
+
+        if (memberCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Only owners or admins can export reports' });
+        }
+
+        // 2. Fetch All Data
+        const groupRes = await db.query('SELECT * FROM groups WHERE id = $1', [id]);
+        const group = groupRes.rows[0];
+
+        // Members
+        const membersRes = await db.query(
+            `SELECT u.name, u.email, gm.role 
+             FROM group_members gm 
+             JOIN users u ON gm.user_id = u.id 
+             WHERE gm.group_id = $1`,
+            [id]
+        );
+        const members = membersRes.rows;
+
+        // Expenses
+        const expensesRes = await db.query(
+            `SELECT e.title, e.amount, e.created_at, u.name as paid_by 
+             FROM expenses e 
+             LEFT JOIN users u ON e.paid_by = u.id 
+             WHERE e.group_id = $1 
+             ORDER BY e.created_at DESC`,
+            [id]
+        );
+        const expenses = expensesRes.rows;
+
+        // Balances (re-calculate or fetch if stored, but let's re-use the balance logic or simplification)
+        // For report simplicity, we might just list members and total spend, OR re-implement the simple balance logic here if needed.
+        // Let's assume user just wants list of expenses and members for now as per "full report".
+        // Actually, let's include the "Net Balance" if we can easily get it.
+        // Re-using the logic from `groupController` or `utils` if it existed would be best. 
+        // For now, let's stick to essential data to avoid duplicating complex balance logic inside this controller unless requested.
+        // Let's add a "Total Group Spend" at least.
+        const totalSpend = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+        const currencySymbol = { 'USD': '$', 'GBP': '£', 'EUR': '€' }[group.currency] || '$';
+
+
+        // 3. Generate PDF
+        const doc = new PDFDocument({ margin: 50 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=group_report_${id}.pdf`);
+
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).text(group.name, { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(group.description || 'No description', { align: 'center', color: 'grey' });
+        doc.moveDown();
+        doc.text(`Total Spend: ${currencySymbol}${totalSpend.toFixed(2)}`, { align: 'center' });
+        doc.moveDown();
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+        doc.moveDown();
+
+        // Members Section
+        doc.fontSize(16).text('Members');
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+
+        members.forEach(m => {
+            doc.text(`${m.name} (${m.email}) - ${m.role}`);
+        });
+
+        doc.moveDown();
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+        doc.moveDown();
+
+        // Expenses Section
+        doc.fontSize(16).text('Expenses Log');
+        doc.moveDown(0.5);
+
+        // Table Header
+        const tableTop = doc.y;
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text('Date', 50, tableTop);
+        doc.text('Title', 150, tableTop);
+        doc.text('Paid By', 350, tableTop);
+        doc.text('Amount', 450, tableTop, { align: 'right' });
+        doc.font('Helvetica');
+        doc.moveDown();
+
+        expenses.forEach((e, i) => {
+            const y = doc.y;
+            if (y > 700) {
+                doc.addPage();
+            }
+
+            const date = new Date(e.created_at).toLocaleDateString();
+            doc.text(date, 50, doc.y);
+            doc.text(e.title, 150, doc.y, { width: 190, lineBreak: false, ellipsis: true });
+            doc.text(e.paid_by || 'Unknown', 350, doc.y);
+            doc.text(`${currencySymbol}${Number(e.amount).toFixed(2)}`, 450, doc.y, { align: 'right' });
+            doc.moveDown(0.5);
+        });
+
+        doc.end();
+
+    } catch (err) {
+        console.error(err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Server error generating report' });
+        }
+    }
+};

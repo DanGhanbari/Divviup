@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2, Euro, PoundSterling, Pencil } from 'lucide-react';
+import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2, Euro, PoundSterling, Pencil, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -265,6 +265,26 @@ const GroupDetails = () => {
         }
     };
 
+    const handleExportReport = async () => {
+        try {
+            const response = await api.get(`/groups/${id}/report`, {
+                responseType: 'blob', // Important for PDF download
+            });
+
+            // Create a blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `group_report_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to download report');
+        }
+    };
+
     // ... (handleDeleteExpense, handleDeleteTask, handleDeleteGroup, isOwner, handleRemoveMember, currencySymbol remain same)
 
     // ... UI RENDER changes ...
@@ -354,6 +374,8 @@ const GroupDetails = () => {
     };
 
     const isOwner = group?.members.find(m => m.id === user?.id)?.role === 'owner';
+    const isAdmin = group?.members.find(m => m.id === user?.id)?.role === 'admin';
+    const canExport = isOwner || isAdmin;
 
     const handleRemoveMember = (memberId) => {
         setConfirmModal({
@@ -398,6 +420,15 @@ const GroupDetails = () => {
                             className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition flex items-center gap-1 font-medium text-sm"
                         >
                             <Trash2 size={16} /> Delete Group
+                        </button>
+                    )}
+                    {canExport && (
+                        <button
+                            onClick={handleExportReport}
+                            className="bg-slate-100 text-slate-600 hover:bg-slate-200 p-2 rounded-lg transition flex items-center gap-1 font-medium text-sm ml-2"
+                            title="Export PDF Report"
+                        >
+                            <FileText size={16} /> Export PDF
                         </button>
                     )}
                 </div>
