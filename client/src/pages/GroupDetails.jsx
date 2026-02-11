@@ -609,26 +609,44 @@ const GroupDetails = () => {
                                         )}
                                     </div>
 
-                                    {/* Unified Right Side Container (Receipt + Mobile Actions) */}
-                                    {/* Swapped: Now before Amount */}
-                                    <div className="flex sm:hidden items-center gap-2">
-                                        {expense.receipt_path && (
-                                            <button
-                                                onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
-                                                className="sm:hidden flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
-                                                title="View Receipt"
-                                            >
-                                                <Paperclip size={14} />
-                                                <span className="hidden sm:inline">Receipt</span>
-                                            </button>
-                                        )}
+                                    {/* Mobile Wrapper: Flex Between */}
+                                    <div className="flex sm:hidden w-full justify-between items-center">
+                                        {/* Left Side: Tag + Receipt */}
+                                        <div className="flex items-center gap-2">
+                                            {/* Mobile Split Tag */}
+                                            <span className="text-[10px] text-slate-400 uppercase bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                                {expense.split_type}
+                                            </span>
 
-                                        {/* Mobile Actions (Visible Only on Mobile) */}
-                                        <div className="flex sm:hidden gap-1 ml-2 pl-2 border-l border-slate-100">
+                                            {/* Mobile Receipt */}
+                                            {expense.receipt_path && (
+                                                <button
+                                                    onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${expense.receipt_path}`)}
+                                                    className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
+                                                    title="View Receipt"
+                                                >
+                                                    <Paperclip size={14} />
+                                                    <span className="sr-only">Receipt</span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Right Side: Actions */}
+                                        <div className="flex items-center gap-1">
                                             {(isOwner || isAdmin || expense.paid_by === user.id) && (
                                                 <>
-                                                    <button onClick={() => handleEditExpense(expense)} className="p-1.5 text-slate-400 hover:text-indigo-600"><Pencil size={16} /></button>
-                                                    <button onClick={() => handleDeleteExpense(expense.id)} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
+                                                    <button
+                                                        onClick={() => handleEditExpense(expense)}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded-full border border-slate-100"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteExpense(expense.id)}
+                                                        className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 rounded-full border border-slate-100"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
                                                 </>
                                             )}
                                         </div>
