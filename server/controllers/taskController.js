@@ -10,6 +10,28 @@ exports.createTask = async (req, res) => {
     }
 
     try {
+        // Check Plan Limits
+        // We need to check the plan of the *creator* (req.user) or the *group owner*?
+        // Usually features are based on the person performing the action or the group owner.
+        // For simplicity and typical SaaS logic, let's restriction based on the *creator of the task* 
+        // OR the group context. 
+        // Let's assume the restriction is on the *Group* so it doesn't matter who adds it?
+        // But the prompt says "with free plan only 2 tasks can be added". 
+        // If the group owner is free, the group should be limited? Or if the *user* is free?
+        // Let's check the *User's* plan who is trying to add the task.
+
+        const userPlanRes = await db.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
+        const userPlan = userPlanRes.rows[0]?.plan || 'free';
+
+        if (userPlan === 'free') {
+            const taskCountRes = await db.query('SELECT COUNT(*) FROM tasks WHERE group_id = $1', [group_id]);
+            const taskCount = parseInt(taskCountRes.rows[0].count);
+
+            if (taskCount >= 2) {
+                return res.status(403).json({ error: 'Free plan limit reached. You can only create 2 tasks per group.' });
+            }
+        }
+
         const result = await db.query(
             'INSERT INTO tasks (group_id, title, assigned_to, due_date) VALUES ($1, $2, $3, $4) RETURNING *',
             [group_id, title, assigned_to, due_date]

@@ -13,6 +13,9 @@ CREATE TABLE users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   avatar_url TEXT,
+  plan TEXT CHECK (plan IN ('free', 'premium')) DEFAULT 'free',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

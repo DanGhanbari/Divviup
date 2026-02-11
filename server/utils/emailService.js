@@ -106,3 +106,67 @@ exports.sendInvitationEmail = async (email, inviterName, groupName) => {
         return { success: false, error: error.message };
     }
 };
+
+exports.sendPasswordResetEmail = async (email, token) => {
+    try {
+        const supportEmail = process.env.SUPPORT_EMAIL || 'team@divviup.xyz';
+
+        // Determine the app link:
+        // 1. Use explicit APP_LINK env var if set (Production override)
+        // 2. If NODE_ENV is production, default to https://divviup.xyz
+        // 3. Otherwise (development/test), default to http://localhost:5173
+        let appLink = process.env.APP_LINK;
+        if (!appLink) {
+            appLink = process.env.NODE_ENV === 'production'
+                ? 'https://divviup.xyz'
+                : 'http://localhost:5173';
+        }
+
+        // Reset link: {appLink}/reset-password?token={token}
+
+        const resetLink = `${appLink}/reset-password?token=${token}`;
+
+        const subject = 'Reset your DivviUp password';
+
+        const html = `
+<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+    <p>Hi,</p>
+    <p>We received a request to reset your password for your <strong>DivviUp</strong> account.</p>
+    <p>If you didn't ask to reset your password, you can ignore this email.</p>
+    <p>To reset your password, click the link below:</p>
+    <p>👉 <a href="${resetLink}" style="color: #4F46E5; font-weight: bold; text-decoration: none;">Reset Password</a></p>
+    <p>Or copy and paste this link into your browser:</p>
+    <p>${resetLink}</p>
+    <p>This link will expire in 1 hour.</p>
+    <br>
+    <p>Best regards,<br>The DivviUp Team</p>
+</div>
+`;
+
+        if (!resend) {
+            console.error("Resend API key not configured. Password reset email not sent.");
+            // For development without API key, log the link
+            console.log("DEV MODE - Password Reset Link:", resetLink);
+            return { success: true, messageId: 'dev-mock-id' };
+        }
+
+        const { data, error } = await resend.emails.send({
+            from: process.env.EMAIL_FROM || 'DivviUp <team@divviup.xyz>',
+            to: email,
+            subject: subject,
+            html: html
+        });
+
+        if (error) {
+            console.error("Error from Resend:", error);
+            return { success: false, error };
+        }
+
+        console.log("Password reset email sent: %s", data?.id);
+        return { success: true, messageId: data?.id };
+
+    } catch (error) {
+        console.error("Error sending password reset email:", error);
+        return { success: false, error: error.message };
+    }
+};

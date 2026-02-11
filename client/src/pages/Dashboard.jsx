@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, Users, Calendar } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const Dashboard = () => {
+    const { refreshUser } = useAuth();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
     const [newGroupDesc, setNewGroupDesc] = useState('');
     const [newGroupCurrency, setNewGroupCurrency] = useState('USD');
@@ -24,7 +31,13 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchGroups();
-    }, []);
+
+        if (searchParams.get('success') === 'true') {
+            refreshUser();
+            // Clean up URL
+            navigate('/dashboard', { replace: true });
+        }
+    }, [searchParams, refreshUser, navigate]);
 
     const handleCreateGroup = async (e) => {
         e.preventDefault();
@@ -41,6 +54,12 @@ const Dashboard = () => {
             fetchGroups();
         } catch (err) {
             console.error(err);
+            if (err.response && err.response.status === 403 && err.response.data.error.includes('Free plan limit')) {
+                setShowModal(false);
+                setShowUpgradeModal(true);
+            } else {
+                alert('Failed to create group. Please try again.');
+            }
         }
     };
 
@@ -134,6 +153,16 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={showUpgradeModal}
+                onClose={() => setShowUpgradeModal(false)}
+                onConfirm={() => window.location.href = '/dashboard/pricing'}
+                title="Free Plan Limit Reached"
+                message="You have reached the maximum number of groups allowed on the Free plan. Upgrade to Premium to create unlimited groups."
+                confirmText="Upgrade now"
+                type="warning"
+            />
         </div>
     );
 };

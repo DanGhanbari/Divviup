@@ -7,6 +7,9 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupDetails from './pages/GroupDetails'; // Coming soon
 import Settings from './pages/Settings';
+import Pricing from './pages/Pricing';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import LandingPage from './pages/LandingPage';
 
@@ -34,12 +37,15 @@ function App() {
 
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected App Routes */}
           <Route path="/dashboard" element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="groups/:id" element={<GroupDetails />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="pricing" element={<Pricing />} />
           </Route>
         </Routes>
         <Analytics />

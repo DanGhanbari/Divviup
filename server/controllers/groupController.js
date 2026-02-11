@@ -11,6 +11,20 @@ exports.createGroup = async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // Check Plan Limits
+        const userRes = await client.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
+        const userPlan = userRes.rows[0].plan;
+
+        if (userPlan === 'free') {
+            const groupCountRes = await client.query('SELECT COUNT(*) FROM groups WHERE created_by = $1', [req.user.id]);
+            const groupCount = parseInt(groupCountRes.rows[0].count);
+
+            if (groupCount >= 1) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ error: 'Free plan limit reached. Upgrade to create more groups.' });
+            }
+        }
+
         // Create Group
         const groupResult = await client.query(
             'INSERT INTO groups (name, description, is_one_time, created_by, currency) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -126,6 +140,29 @@ exports.addMember = async (req, res) => {
         if (permissionCheck.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(403).json({ error: 'Only owners or admins can add members' });
+        }
+
+        // Check Plan Limits (based on Owner's plan)
+        const ownerRes = await client.query(
+            `SELECT u.plan 
+             FROM group_members gm 
+             JOIN users u ON gm.user_id = u.id 
+             WHERE gm.group_id = $1 AND gm.role = 'owner'`,
+            [id]
+        );
+        const ownerPlan = ownerRes.rows[0]?.plan || 'free';
+
+        if (ownerPlan === 'free') {
+            const memberCountRes = await client.query(
+                `SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND role != 'owner'`,
+                [id]
+            );
+            const memberCount = parseInt(memberCountRes.rows[0].count);
+
+            if (memberCount >= 1) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ error: 'Free plan limit reached. Upgrade to add more members.' });
+            }
         }
 
         // 2. Find user by email
@@ -313,6 +350,38 @@ exports.sendInvitation = async (req, res) => {
             return res.status(403).json({ error: 'Only owners or admins can invite members' });
         }
 
+        // Check Plan Limits (based on Owner's plan)
+        const ownerRes = await db.query(
+            `SELECT u.plan 
+             FROM group_members gm 
+             JOIN users u ON gm.user_id = u.id 
+             WHERE gm.group_id = $1 AND gm.role = 'owner'`,
+            [id]
+        );
+        const ownerPlan = ownerRes.rows[0]?.plan || 'free';
+
+        if (ownerPlan === 'free') {
+            const memberCountRes = await db.query(
+                `SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND role != 'owner'`,
+                [id]
+            );
+            // Count pending invitations as potential members too ?
+            // The prompt says "can only add one member". Pending invites are not members yet but will be.
+            // Let's count pending too to avoid loophole, although simply blocking at join is safer.
+            // For good UX, block invite too.
+            const pendingCountRes = await db.query(
+                `SELECT COUNT(*) FROM group_invitations WHERE group_id = $1 AND status = 'pending'`,
+                [id]
+            );
+
+            const memberCount = parseInt(memberCountRes.rows[0].count);
+            const pendingCount = parseInt(pendingCountRes.rows[0].count);
+
+            if (memberCount + pendingCount >= 1) {
+                return res.status(403).json({ error: 'Free plan limit reached. Upgrade to invite more members.' });
+            }
+        }
+
         // 2. Check if user already exists (if so, they should just be added, not invited via email flow for non-users)
         // Although the prompt says "if that member has not signed up yet... send invitation"
         // The duplicate check in addMember likely fails before this if the UI calls addMember first.
@@ -375,6 +444,14 @@ exports.generateGroupReport = async (req, res) => {
 
         if (memberCheck.rows.length === 0) {
             return res.status(403).json({ error: 'Only owners or admins can export reports' });
+        }
+
+        // Check Plan (Premium Only for Export)
+        const userPlanRes = await db.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
+        const userPlan = userPlanRes.rows[0]?.plan || 'free';
+
+        if (userPlan !== 'premium') {
+            return res.status(403).json({ error: 'Exporting reports is a Premium feature. Please upgrade.' });
         }
 
         // 2. Fetch All Data

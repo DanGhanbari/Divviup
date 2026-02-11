@@ -173,6 +173,19 @@ const GroupDetails = () => {
 
     const handleAddTask = async (e) => {
         e.preventDefault();
+
+        if (user?.plan === 'free' && tasks.length >= 2) {
+            setConfirmModal({
+                isOpen: true,
+                title: 'Upgrade for More Tasks',
+                message: 'You have reached the limit of 2 tasks per group on the Free plan. Upgrade to Premium for unlimited tasks.',
+                type: 'info',
+                confirmText: 'Upgrade Now',
+                onConfirm: () => navigate('/dashboard/pricing')
+            });
+            return;
+        }
+
         if (!newTaskTitle.trim()) return;
         try {
             const res = await api.post(`/groups/${id}/tasks`, { title: newTaskTitle });
@@ -236,7 +249,18 @@ const GroupDetails = () => {
             fetchData(); // Refresh to show pending member
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.error || 'Failed to send invitation');
+            if (err.response && err.response.status === 403 && err.response.data.error.includes('Free plan limit')) {
+                setConfirmModal({
+                    isOpen: true,
+                    title: 'Upgrade to Premium',
+                    message: 'You have reached the free plan limit for members. Would you like to upgrade to Premium?',
+                    type: 'info',
+                    confirmText: 'Upgrade',
+                    onConfirm: () => navigate('/dashboard/pricing')
+                });
+            } else {
+                alert(err.response?.data?.error || 'Failed to send invitation');
+            }
         }
     };
 
@@ -251,7 +275,16 @@ const GroupDetails = () => {
                 fetchData(); // Refresh to show new member
             } catch (err) {
                 console.error(err);
-                if (err.response && err.response.status === 404 && err.response.data.error === 'User not found') {
+                if (err.response && err.response.status === 403 && err.response.data.error.includes('Free plan limit')) {
+                    setConfirmModal({
+                        isOpen: true,
+                        title: 'Upgrade to Premium',
+                        message: 'You have reached the free plan limit for members. Would you like to upgrade to Premium?',
+                        type: 'info',
+                        confirmText: 'Upgrade now',
+                        onConfirm: () => navigate('/dashboard/pricing')
+                    });
+                } else if (err.response && err.response.status === 404 && err.response.data.error === 'User not found') {
                     // User doesn't exist, prompt to invite
                     setConfirmModal({
                         isOpen: true,
@@ -263,8 +296,9 @@ const GroupDetails = () => {
                     });
                     // Don't close the add member modal yet in case they cancel
                     return;
+                } else {
+                    alert(err.response?.data?.error || 'Failed to add member');
                 }
-                alert(err.response?.data?.error || 'Failed to add member');
             }
         };
 
@@ -283,6 +317,17 @@ const GroupDetails = () => {
     };
 
     const handleExportReport = async () => {
+        if (user?.plan !== 'premium') {
+            setConfirmModal({
+                isOpen: true,
+                title: 'Premium Feature',
+                message: 'Exporting reports is available exclusively to Premium members. Upgrade to access this feature.',
+                type: 'info',
+                confirmText: 'Upgrade Now',
+                onConfirm: () => navigate('/dashboard/pricing')
+            });
+            return;
+        }
         try {
             const response = await api.get(`/groups/${id}/report`, {
                 responseType: 'blob', // Important for download
@@ -352,7 +397,7 @@ const GroupDetails = () => {
             onConfirm: async () => {
                 try {
                     await api.delete(`/groups/${id}`);
-                    navigate('/'); // Root is the dashboard
+                    navigate('/dashboard');
                 } catch (err) {
                     console.error(err);
                     alert('Failed to delete group');

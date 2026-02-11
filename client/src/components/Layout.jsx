@@ -1,55 +1,110 @@
 import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Home, PlusCircle, Settings } from 'lucide-react';
+import { LogOut, Home, PlusCircle, Settings, CreditCard, User } from 'lucide-react';
 import pkg from '../../package.json';
 
 const Layout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
     const handleLogout = () => {
         navigate('/');
         logout();
     };
 
+    const isActive = (path) => location.pathname === path;
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            <header className="sticky top-0 z-50 bg-indigo-50/80 backdrop-blur-xl border-b border-indigo-200/50 transition-all duration-200">
+        <div className="min-h-screen bg-slate-50 flex flex-col pb-16 md:pb-0">
+            {/* Desktop & Tablet Header */}
+            <header className="sticky top-0 z-50 bg-indigo-50/80 backdrop-blur-xl border-b border-indigo-200/50 transition-all duration-200 hidden md:block">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                     <Link to="/dashboard" className="text-2xl font-bold tracking-tight flex items-center gap-2 text-slate-800 hover:text-indigo-600 transition-colors">
                         DivviUp
                     </Link>
 
                     <nav className="flex items-center gap-2">
-                        <Link to="/dashboard" className="flex items-center gap-1.5 px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-100 hover:shadow-sm transition-all font-medium text-sm">
+                        <Link to="/dashboard" className={`flex items-center gap-1.5 px-4 py-2 rounded-full transition-all font-medium text-sm ${isActive('/dashboard') ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50'}`}>
                             <Home size={16} /> Dashboard
                         </Link>
+                        <Link to="/dashboard/pricing" className={`flex items-center gap-1.5 px-4 py-2 rounded-full transition-all font-medium text-sm ${isActive('/dashboard/pricing') ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50'}`}>
+                            <CreditCard size={16} /> Pricing
+                        </Link>
+
                         <div className="pl-4 ml-2 border-l border-slate-200 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm" title={user?.name}>
-                                {user?.name?.charAt(0)}
+                            <div className="flex items-center gap-2 mr-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold relative ${user?.plan === 'premium' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md' : 'bg-indigo-100 text-indigo-700'}`} title={user?.name}>
+                                    {user?.name?.charAt(0)}
+                                    {user?.plan === 'premium' && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-600 rounded-full border-2 border-white"></div>
+                                    )}
+                                </div>
+                                <span className="text-sm font-medium text-slate-700">{user?.name}</span>
                             </div>
+
                             <Link
                                 to="/dashboard/settings"
-                                className="text-slate-500 hover:text-indigo-600 p-2 rounded-full hover:bg-slate-50 transition-colors"
+                                className={`p-2 rounded-full transition-colors ${isActive('/dashboard/settings') ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'}`}
                                 title="Settings"
                             >
-                                <Settings size={18} />
+                                <Settings size={20} />
                             </Link>
                             <button
                                 onClick={handleLogout}
                                 className="text-slate-500 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
                                 title="Logout"
                             >
-                                <LogOut size={18} />
+                                <LogOut size={20} />
                             </button>
                         </div>
                     </nav>
                 </div>
             </header>
-            <main className="flex-grow container mx-auto px-4 py-8">
+
+            {/* Mobile Header (Logo only) */}
+            <header className="sticky top-0 z-50 bg-indigo-50/95 backdrop-blur-xl border-b border-indigo-200/50 md:hidden">
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+                    <Link to="/dashboard" className="text-xl font-bold tracking-tight text-slate-800">
+                        DivviUp
+                    </Link>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold relative ${user?.plan === 'premium' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md' : 'bg-indigo-100 text-indigo-700'}`}>
+                        {user?.name?.charAt(0)}
+                        {user?.plan === 'premium' && (
+                            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white"></div>
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
                 <Outlet />
             </main>
-            <footer className="bg-white border-t border-slate-200 mt-auto">
+
+            {/* Mobile Bottom Navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50 md:hidden">
+                <div className="flex justify-around items-center px-2 py-3">
+                    <Link to="/dashboard" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <Home size={24} strokeWidth={isActive('/dashboard') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-1">Home</span>
+                    </Link>
+                    <Link to="/dashboard/pricing" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard/pricing') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <CreditCard size={24} strokeWidth={isActive('/dashboard/pricing') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-1">Pricing</span>
+                    </Link>
+                    <Link to="/dashboard/settings" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard/settings') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <Settings size={24} strokeWidth={isActive('/dashboard/settings') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-1">Settings</span>
+                    </Link>
+                    <button onClick={handleLogout} className="flex flex-col items-center p-2 rounded-lg text-slate-500 hover:text-red-500">
+                        <LogOut size={24} />
+                        <span className="text-[10px] font-medium mt-1">Logout</span>
+                    </button>
+                </div>
+            </nav>
+
+            <footer className="bg-white border-t border-slate-200 mt-auto hidden md:block">
                 <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
                     <div className="flex items-center gap-4 mb-4 md:mb-0">
                         <span className="font-bold text-slate-700">DivviUp</span>

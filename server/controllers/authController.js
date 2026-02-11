@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const emailService = require('../utils/emailService');
 const { getIo } = require('../utils/socket');
+const crypto = require('crypto');
 
 exports.register = async (req, res) => {
     const { name, email: rawEmail, password } = req.body;
@@ -26,7 +27,7 @@ exports.register = async (req, res) => {
 
         // Create user
         const newUser = await db.query(
-            'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
+            'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, plan',
             [name, email, hashedPassword]
         );
 
@@ -111,7 +112,15 @@ exports.login = async (req, res) => {
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.json({
-            user: { id: user.id, name: user.name, email: user.email, avatar_url: user.avatar_url },
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                avatar_url: user.avatar_url,
+                plan: user.plan,
+                subscription_status: user.subscription_status,
+                current_period_end: user.current_period_end
+            },
             token
         });
     } catch (err) {
@@ -122,7 +131,7 @@ exports.login = async (req, res) => {
 
 exports.getMe = async (req, res) => {
     try {
-        const userResult = await db.query('SELECT id, name, email, avatar_url FROM users WHERE id = $1', [req.user.id]);
+        const userResult = await db.query('SELECT id, name, email, avatar_url, plan, subscription_status, current_period_end FROM users WHERE id = $1', [req.user.id]);
         if (userResult.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -167,6 +176,89 @@ exports.changePassword = async (req, res) => {
         await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, req.user.id]);
 
         res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userResult.rows.length === 0) {
+            // Security: Don't reveal if email exists or not
+            return res.json({ message: 'If an account exists with this email, a password reset link has been sent.' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Generate reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        // Token expires in 1 hour
+        const resetExpires = new Date(Date.now() + 3600000);
+
+        // Save token to DB
+        await db.query(
+            'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
+            [resetTokenHash, resetExpires, user.id]
+        );
+
+        // Send email
+        await emailService.sendPasswordResetEmail(user.email, resetToken);
+
+        res.json({ message: 'If an account exists with this email, a password reset link has been sent.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+        // Find user with valid token
+        const userResult = await db.query(
+            'SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
+            [resetTokenHash]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired token' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update password and clear reset token
+        await db.query(
+            'UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+            [hashedPassword, user.id]
+        );
+
+        res.json({ message: 'Password has been reset successfully' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });

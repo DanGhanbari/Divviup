@@ -41,6 +41,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 // app.options('*', cors(corsOptions)); // Removed to prevent Express 5 PathError
+
+// Stripe webhook requires raw body
+app.use('/payments/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
@@ -137,6 +141,14 @@ const initDb = async () => {
 
             -- Migrations
             ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_path TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMP;
+            ALTER TABLE groups ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP;
         `);
     console.log('✅ Database schema initialized successfully');
   } catch (err) {
@@ -190,6 +202,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
 app.use('/auth', require('./routes/authRoutes'));
+app.use('/payments', require('./routes/paymentRoutes'));
 app.use('/', expenseRoutes); // Mount at root, paths defined in router
 app.use('/groups/:group_id/tasks', taskRoutes);
 app.use('/groups', require('./routes/groupRoutes'));
