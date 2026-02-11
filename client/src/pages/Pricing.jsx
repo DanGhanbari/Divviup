@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { loadStripe } from '@stripe/stripe-js';
 import ConfirmationModal from '../components/ConfirmationModal';
+import api from '../api';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -13,25 +14,19 @@ const Pricing = () => {
     const handleUpgrade = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/payments/create-checkout-session`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
+            // Use the shared api instance for consistency (handles base URL and auth headers)
+            const response = await api.post('/payments/create-checkout-session');
 
-            const session = await response.json();
-
-            if (response.ok) {
-                window.location.href = session.url;
+            if (response.data && response.data.url) {
+                window.location.href = response.data.url;
             } else {
-                console.error('Failed to create checkout session');
-                alert('Failed to initiate upgrade. Please try again.');
+                console.error('No checkout URL received');
+                alert('Failed to initiate upgrade. No URL returned.');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            const errorMessage = error.response?.data?.error || 'An error occurred. Please try again.';
+            alert(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -47,23 +42,13 @@ const Pricing = () => {
             onConfirm: async () => {
                 setLoading(true);
                 try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/payments/cancel-subscription`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-
-                    if (response.ok) {
-                        await refreshUser();
-                        alert('Subscription canceled. You will be downgraded at the end of the billing period.');
-                    } else {
-                        alert('Failed to cancel subscription.');
-                    }
+                    await api.post('/payments/cancel-subscription');
+                    await refreshUser();
+                    alert('Subscription canceled. You will be downgraded at the end of the billing period.');
                 } catch (error) {
                     console.error('Error:', error);
-                    alert('An error occurred.');
+                    const errorMessage = error.response?.data?.error || 'Failed to cancel subscription.';
+                    alert(errorMessage);
                 } finally {
                     setLoading(false);
                 }
