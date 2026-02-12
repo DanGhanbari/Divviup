@@ -16,6 +16,26 @@ const Layout = () => {
 
     const isActive = (path) => location.pathname === path;
 
+    // Scroll Detection for Mobile Nav
+    const [showMobileNav, setShowMobileNav] = React.useState(true);
+    const [lastScrollY, setLastScrollY] = React.useState(0);
+
+    React.useEffect(() => {
+        const controlNavbar = () => {
+            if (typeof window !== 'undefined') {
+                if (window.scrollY > lastScrollY && window.scrollY > 100) { // Scroll Down > 100px
+                    setShowMobileNav(false);
+                } else { // Scroll Up
+                    setShowMobileNav(true);
+                }
+                setLastScrollY(window.scrollY);
+            }
+        };
+
+        window.addEventListener('scroll', controlNavbar);
+        return () => window.removeEventListener('scroll', controlNavbar);
+    }, [lastScrollY]);
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col pb-16 md:pb-0">
             {/* Desktop & Tablet Header */}
@@ -83,23 +103,23 @@ const Layout = () => {
             </main>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50 md:hidden">
-                <div className="flex justify-around items-center px-2 py-3">
-                    <Link to="/dashboard" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard') ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        <Home size={24} strokeWidth={isActive('/dashboard') ? 2.5 : 2} />
-                        <span className="text-[10px] font-medium mt-1">Home</span>
+            <nav className={`fixed left-4 right-4 bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl shadow-lg z-50 md:hidden transition-all duration-600 ease-in-out ${showMobileNav ? 'bottom-4 opacity-100' : '-bottom-24 opacity-0'}`}>
+                <div className="flex justify-around items-center px-1 py-2">
+                    <Link to="/dashboard" className={`flex flex-col items-center p-1.5 rounded-lg ${isActive('/dashboard') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <Home size={22} strokeWidth={isActive('/dashboard') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-0.5">Home</span>
                     </Link>
-                    <Link to="/dashboard/pricing" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard/pricing') ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        <CreditCard size={24} strokeWidth={isActive('/dashboard/pricing') ? 2.5 : 2} />
-                        <span className="text-[10px] font-medium mt-1">Pricing</span>
+                    <Link to="/dashboard/pricing" className={`flex flex-col items-center p-1.5 rounded-lg ${isActive('/dashboard/pricing') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <CreditCard size={22} strokeWidth={isActive('/dashboard/pricing') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-0.5">Pricing</span>
                     </Link>
-                    <Link to="/dashboard/settings" className={`flex flex-col items-center p-2 rounded-lg ${isActive('/dashboard/settings') ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        <Settings size={24} strokeWidth={isActive('/dashboard/settings') ? 2.5 : 2} />
-                        <span className="text-[10px] font-medium mt-1">Settings</span>
+                    <Link to="/dashboard/settings" className={`flex flex-col items-center p-1.5 rounded-lg ${isActive('/dashboard/settings') ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <Settings size={22} strokeWidth={isActive('/dashboard/settings') ? 2.5 : 2} />
+                        <span className="text-[10px] font-medium mt-0.5">Settings</span>
                     </Link>
-                    <button onClick={handleLogout} className="flex flex-col items-center p-2 rounded-lg text-slate-500 hover:text-red-500">
-                        <LogOut size={24} />
-                        <span className="text-[10px] font-medium mt-1">Logout</span>
+                    <button onClick={handleLogout} className="flex flex-col items-center p-1.5 rounded-lg text-slate-500 hover:text-red-500">
+                        <LogOut size={22} />
+                        <span className="text-[10px] font-medium mt-0.5">Logout</span>
                     </button>
                 </div>
             </nav>
