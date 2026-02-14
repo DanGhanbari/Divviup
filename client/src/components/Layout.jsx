@@ -39,7 +39,7 @@ const Layout = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col pb-16 md:pb-0">
             {/* Desktop & Tablet Header */}
-            <header className="sticky top-0 z-50 bg-indigo-50/80 backdrop-blur-xl border-b border-indigo-200/50 transition-all duration-200 hidden md:block">
+            <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-sm border-b border-white/20 transition-all duration-200 hidden md:block">
                 <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                     <Link to="/dashboard" className="text-2xl font-bold tracking-tight flex items-center gap-2 text-slate-800 hover:text-indigo-600 transition-colors">
                         DivviUp
@@ -98,7 +98,7 @@ const Layout = () => {
                 </div>
             </header>
 
-            <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
+            <main className="flex-grow container mx-auto px-4 py-6 md:py-8 md:pt-24">
                 <Outlet />
             </main>
 

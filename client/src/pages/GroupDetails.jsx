@@ -28,7 +28,7 @@ const GroupDetails = () => {
 
     // Forms
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null });
+    const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -107,6 +107,7 @@ const GroupDetails = () => {
             formData.append('title', newExpense.title);
             formData.append('amount', newExpense.amount);
             formData.append('split_type', newExpense.split_type);
+            formData.append('expense_date', newExpense.expense_date);
             if (newExpense.paid_by) formData.append('paid_by', newExpense.paid_by);
             if (newExpense.receipt) formData.append('receipt', newExpense.receipt);
 
@@ -124,7 +125,7 @@ const GroupDetails = () => {
             }
 
             setShowExpenseModal(false);
-            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null });
+            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
             setEditingExpenseId(null);
             fetchData();
         } catch (err) {
@@ -160,7 +161,8 @@ const GroupDetails = () => {
                 paid_by: fullExpense.paid_by, // Preserve the original payer
                 splits: splitsState,
                 receipt: null, // Reset file input
-                existingReceipt: fullExpense.receipt_path // Store path for display
+                existingReceipt: fullExpense.receipt_path, // Store path for display
+                expense_date: fullExpense.expense_date ? new Date(fullExpense.expense_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
             });
 
             setShowExpenseModal(true);
@@ -462,7 +464,7 @@ const GroupDetails = () => {
                 <div className="flex items-center gap-4 text-sm text-slate-500">
                     <div className="flex items-center gap-2">
                         <Users size={16} />
-                        <span>{group.members.length} members</span>
+                        <span>{group.members.length} {group.members.length === 1 ? 'member' : 'members'}</span>
                     </div>
                     <div className="flex -space-x-2">
                         {group.members.map((m) => (
@@ -554,7 +556,11 @@ const GroupDetails = () => {
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-slate-800">Expenses</h2>
-                        <button onClick={() => setShowExpenseModal(true)} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700">
+                        <button onClick={() => {
+                            setEditingExpenseId(null);
+                            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
+                            setShowExpenseModal(true);
+                        }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700">
                             <Plus size={16} /> Add Expense
                         </button>
                     </div>
@@ -569,7 +575,7 @@ const GroupDetails = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <p className="text-sm text-slate-500 truncate">
-                                            Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.created_at).toLocaleDateString()}
+                                            Paid by <span className="font-medium text-slate-700">{expense.paid_by_name}</span> • {new Date(expense.expense_date || expense.created_at).toLocaleDateString()}
                                         </p>
                                         <span className="hidden sm:inline-block text-[10px] text-slate-400 uppercase bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{expense.split_type}</span>
                                         {expense.receipt_path && (
@@ -661,154 +667,170 @@ const GroupDetails = () => {
                             </div>))}
                     </div>
                 </div>
-            )}
+            )
+            }
 
-            {activeTab === 'tasks' && (
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Tasks</h2>
+            {
+                activeTab === 'tasks' && (
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 mb-4">Tasks</h2>
 
-                    <form onSubmit={handleAddTask} className="mb-6 flex gap-2">
-                        <input
-                            type="text"
-                            placeholder="Add a new task..."
-                            className="flex-grow px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={newTaskTitle}
-                            onChange={(e) => setNewTaskTitle(e.target.value)}
-                        />
-                        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Add</button>
-                    </form>
+                        <form onSubmit={handleAddTask} className="mb-6 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Add a new task..."
+                                className="flex-grow px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={newTaskTitle}
+                                onChange={(e) => setNewTaskTitle(e.target.value)}
+                            />
+                            <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Add</button>
+                        </form>
 
-                    <div className="space-y-2">
-                        {(!tasks || tasks.length === 0) ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => {
-                            const isAssigned = !!task.assigned_to;
-                            const isAssignedToMe = task.assigned_to === user.id;
+                        <div className="space-y-2">
+                            {(!tasks || tasks.length === 0) ? <p className="text-slate-500">No tasks yet.</p> : tasks.map(task => {
+                                const isAssigned = !!task.assigned_to;
+                                const isAssignedToMe = task.assigned_to === user.id;
 
-                            return (
-                                <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3">
-                                    <button
-                                        onClick={() => toggleTask(task.id)}
-                                        disabled={isAssigned && !isAssignedToMe}
-                                        className={clsx(
-                                            "w-6 h-6 rounded border flex items-center justify-center transition",
-                                            task.is_completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300",
-                                            (isAssigned && !isAssignedToMe) ? "opacity-50 cursor-not-allowed bg-slate-100" : "hover:border-indigo-500"
-                                        )}
-                                        title={isAssigned && !isAssignedToMe ? `Assigned to ${task.assigned_to_name}` : "Mark as completed"}
-                                    >
-                                        {task.is_completed && <CheckSquare size={14} />}
-                                    </button>
-                                    <div className="flex-grow">
-                                        <span className={clsx("block", task.is_completed && "text-slate-400 line-through")}>{task.title}</span>
-                                        {isAssigned ? (
-                                            <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                                <span className="font-medium text-indigo-600">
-                                                    {isAssignedToMe ? "You are on it" : `${task.assigned_to_name} is on it`}
-                                                </span>
-                                                {isAssignedToMe && (
-                                                    <button onClick={() => handleClaimTask(task.id)} className="text-xs text-slate-400 hover:text-slate-600 underline ml-2">
-                                                        Unclaim
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            !task.is_completed && (
-                                                <button
-                                                    onClick={() => handleClaimTask(task.id)}
-                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-0.5 flex items-center gap-1"
-                                                >
-                                                    I'm on it
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-                                    {isOwner && (
+                                return (
+                                    <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3">
                                         <button
-                                            onClick={() => handleDeleteTask(task.id)}
-                                            className="p-2 text-slate-400 hover:text-red-500 transition"
-                                            title="Delete Task"
+                                            onClick={() => toggleTask(task.id)}
+                                            disabled={isAssigned && !isAssignedToMe}
+                                            className={clsx(
+                                                "w-6 h-6 rounded border flex items-center justify-center transition",
+                                                task.is_completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300",
+                                                (isAssigned && !isAssignedToMe) ? "opacity-50 cursor-not-allowed bg-slate-100" : "hover:border-indigo-500"
+                                            )}
+                                            title={isAssigned && !isAssignedToMe ? `Assigned to ${task.assigned_to_name}` : "Mark as completed"}
                                         >
-                                            <Trash2 size={16} />
+                                            {task.is_completed && <CheckSquare size={14} />}
                                         </button>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'balances' && (
-                <div>
-                    <div className="bg-slate-800 text-white p-6 rounded-xl shadow-sm mb-6">
-                        <p className="text-slate-400 font-medium mb-1">Total Group Spend</p>
-                        <h2 className="text-3xl font-bold">
-                            {currencySymbol}{expenses.reduce((sum, expense) => sum + Number(expense.amount), 0).toFixed(2)}
-                        </h2>
-                    </div>
-
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Member Balances</h2>
-                    <div className="space-y-3">
-                        {balances.map(member => (
-                            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                <div className="flex items-center gap-3 w-full sm:w-auto">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 flex-shrink-0">
-                                        {member.name.charAt(0)}
-                                    </div>
-                                    <div className="flex-grow sm:flex-grow-0 w-full">
-                                        <div className="flex justify-between items-center sm:block">
-                                            <h3 className="font-medium text-slate-800">{member.name}</h3>
-                                            <div className={clsx("sm:hidden block font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
-                                                {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
-                                                {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
-                                            </div>
+                                        <div className="flex-grow">
+                                            <span className={clsx("block", task.is_completed && "text-slate-400 line-through")}>{task.title}</span>
+                                            {isAssigned ? (
+                                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <span className="font-medium text-indigo-600">
+                                                        {isAssignedToMe ? "You are on it" : `${task.assigned_to_name} is on it`}
+                                                    </span>
+                                                    {isAssignedToMe && (
+                                                        <button onClick={() => handleClaimTask(task.id)} className="text-xs text-slate-400 hover:text-slate-600 underline ml-2">
+                                                            Unclaim
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                !task.is_completed && (
+                                                    <button
+                                                        onClick={() => handleClaimTask(task.id)}
+                                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-0.5 flex items-center gap-1"
+                                                    >
+                                                        I'm on it
+                                                    </button>
+                                                )
+                                            )}
                                         </div>
-                                        <p className="text-sm text-slate-500 mt-1 sm:mt-0">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
+                                        {isOwner && (
+                                            <button
+                                                onClick={() => handleDeleteTask(task.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 transition"
+                                                title="Delete Task"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                activeTab === 'balances' && (
+                    <div>
+                        <div className="bg-slate-800 text-white p-6 rounded-xl shadow-sm mb-6">
+                            <p className="text-slate-400 font-medium mb-1">Total Group Spend</p>
+                            <h2 className="text-3xl font-bold">
+                                {currencySymbol}{expenses.reduce((sum, expense) => sum + Number(expense.amount), 0).toFixed(2)}
+                            </h2>
+                        </div>
+
+                        <h2 className="text-xl font-bold text-slate-800 mb-4">Member Balances</h2>
+                        <div className="space-y-3">
+                            {balances.map(member => (
+                                <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 flex-shrink-0">
+                                            {member.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-grow sm:flex-grow-0 w-full">
+                                            <div className="flex justify-between items-center sm:block">
+                                                <h3 className="font-medium text-slate-800">{member.name}</h3>
+                                                <div className={clsx("sm:hidden block font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
+                                                    {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
+                                                    {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-slate-500 mt-1 sm:mt-0">Paid {currencySymbol}{member.total_paid.toFixed(2)} • Share {currencySymbol}{member.total_share.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                    <div className={clsx("hidden sm:block text-right font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
+                                        {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
+                                        {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
                                     </div>
                                 </div>
-                                <div className={clsx("hidden sm:block text-right font-bold text-lg", member.net_balance > 0 ? "text-green-600" : member.net_balance < 0 ? "text-red-500" : "text-slate-500")}>
-                                    {member.net_balance > 0 ? '+' : member.net_balance < 0 ? '-' : ''}
-                                    {currencySymbol}{Math.abs(member.net_balance).toFixed(2)}
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
-
+                )
+            }
             {/* Expense Modal */}
-            {showExpenseModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
-                        <form onSubmit={handleSaveExpense} className="space-y-6">
-                            {/* Section: Main Details */}
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Expense Title</label>
-                                    <input
-                                        type="text"
-                                        placeholder="What was it for?"
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        required
-                                        value={newExpense.title}
-                                        onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {
+                showExpenseModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                            <h2 className="text-xl font-bold mb-4">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
+                            <form onSubmit={handleSaveExpense} className="space-y-6">
+                                {/* Section: Main Details */}
+                                <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Expense Title</label>
+                                        <input
+                                            type="text"
+                                            placeholder="What was it for?"
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            required
+                                            value={newExpense.title}
+                                            onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                             <input
-                                                type="number"
-                                                placeholder="0.00"
-                                                step="0.01"
-                                                className="w-full pl-7 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                type="date"
+                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                                 required
-                                                value={newExpense.amount}
-                                                onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                                                value={newExpense.expense_date}
+                                                onChange={(e) => setNewExpense({ ...newExpense, expense_date: e.target.value })}
                                             />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>
+                                                <input
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    step="0.01"
+                                                    className="w-full pl-7 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    required
+                                                    value={newExpense.amount}
+                                                    onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -830,201 +852,207 @@ const GroupDetails = () => {
                                         </div>
                                     )}
                                 </div>
-                            </div>
 
-                            <hr className="border-slate-100" />
+                                <hr className="border-slate-100" />
 
-                            {/* Section: Split Options */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-slate-700">Split Method</label>
-                                <div className="flex gap-2">
-                                    {['equal', 'percentage'].map((type) => (
-                                        <button
-                                            key={type}
-                                            type="button"
-                                            onClick={() => setNewExpense({ ...newExpense, split_type: type })}
-                                            className={clsx(
-                                                "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition border",
-                                                newExpense.split_type === type
-                                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                            )}
-                                        >
-                                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                                        </button>
-                                    ))}
-                                </div>
+                                {/* Section: Split Options */}
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-medium text-slate-700">Split Method</label>
+                                    <div className="flex gap-2">
+                                        {['equal', 'percentage'].map((type) => (
+                                            <button
+                                                key={type}
+                                                type="button"
+                                                onClick={() => setNewExpense({ ...newExpense, split_type: type })}
+                                                className={clsx(
+                                                    "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition border",
+                                                    newExpense.split_type === type
+                                                        ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
 
-                                {newExpense.split_type === 'percentage' && (
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mt-2">
-                                        <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Adjust Percentages</p>
-                                        <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                                            {group.members.map(member => (
-                                                <div key={member.id} className="flex items-center gap-2">
-                                                    <span className="text-sm text-slate-700 w-24 truncate flex-shrink-0" title={member.name}>{member.name}</span>
-                                                    <div className="relative flex-grow">
-                                                        <input
-                                                            type="number"
-                                                            placeholder="0"
-                                                            className="w-full px-3 py-1.5 text-sm border rounded focus:ring-1 focus:ring-indigo-500 outline-none pr-6"
-                                                            value={newExpense.splits[member.id] || ''}
-                                                            onChange={(e) => setNewExpense({
-                                                                ...newExpense,
-                                                                splits: { ...newExpense.splits, [member.id]: parseFloat(e.target.value) }
-                                                            })}
-                                                        />
-                                                        <span className="absolute right-2 top-1.5 text-slate-400 text-xs">%</span>
+                                    {newExpense.split_type === 'percentage' && (
+                                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mt-2">
+                                            <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Adjust Percentages</p>
+                                            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                                {group.members.map(member => (
+                                                    <div key={member.id} className="flex items-center gap-2">
+                                                        <span className="text-sm text-slate-700 w-24 truncate flex-shrink-0" title={member.name}>{member.name}</span>
+                                                        <div className="relative flex-grow">
+                                                            <input
+                                                                type="number"
+                                                                placeholder="0"
+                                                                className="w-full px-3 py-1.5 text-sm border rounded focus:ring-1 focus:ring-indigo-500 outline-none pr-6"
+                                                                value={newExpense.splits[member.id] || ''}
+                                                                onChange={(e) => setNewExpense({
+                                                                    ...newExpense,
+                                                                    splits: { ...newExpense.splits, [member.id]: parseFloat(e.target.value) }
+                                                                })}
+                                                            />
+                                                            <span className="absolute right-2 top-1.5 text-slate-400 text-xs">%</span>
+                                                        </div>
+                                                        <span className="text-sm font-medium text-slate-600 min-w-[70px] text-right tabular-nums">
+                                                            {currencySymbol}{((newExpense.amount || 0) * ((newExpense.splits[member.id] || 0) / 100)).toFixed(2)}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-sm font-medium text-slate-600 min-w-[70px] text-right tabular-nums">
-                                                        {currencySymbol}{((newExpense.amount || 0) * ((newExpense.splits[member.id] || 0) / 100)).toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <hr className="border-slate-100" />
-
-                            {/* Section: Receipt */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Receipt / Attachment</label>
-
-                                {newExpense.existingReceipt && !newExpense.receipt && (
-                                    <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-green-700">
-                                            <CheckSquare size={16} />
-                                            <span className="text-sm font-medium">Receipt Attached</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${newExpense.existingReceipt}`)}
-                                            className="text-xs text-green-700 hover:text-green-800 underline font-medium"
-                                        >
-                                            View
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition relative">
-                                    {/* Hidden Inputs */}
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/jpeg,image/png,image/heic,image/heif,application/pdf"
-                                        onChange={(e) => setNewExpense({ ...newExpense, receipt: e.target.files[0] })}
-                                    />
-                                    <input
-                                        type="file"
-                                        ref={cameraInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        capture="environment"
-                                        onChange={(e) => setNewExpense({ ...newExpense, receipt: e.target.files[0] })}
-                                    />
-
-                                    {newExpense.receipt ? (
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-full">
-                                                <CheckSquare size={20} />
+                                                ))}
                                             </div>
-                                            <span className="text-sm font-medium text-slate-800 break-all px-4">
-                                                {newExpense.receipt.name}
-                                            </span>
-                                            <span className="text-xs text-green-600 font-medium">Ready to upload</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-3">
-                                            <span className="text-sm font-medium text-slate-600">
-                                                {newExpense.existingReceipt ? 'Replace existing receipt:' : 'Attach receipt:'}
-                                            </span>
-
-                                            <div className="flex gap-3 w-full justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => cameraInputRef.current?.click()}
-                                                    className="flex-1 max-w-[140px] flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm"
-                                                >
-                                                    <Camera size={24} className="text-slate-400" />
-                                                    <span className="text-xs font-medium">Take Photo</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    className="flex-1 max-w-[140px] flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm"
-                                                >
-                                                    <Upload size={24} className="text-slate-400" />
-                                                    <span className="text-xs font-medium">Upload File</span>
-                                                </button>
-                                            </div>
-
-                                            <span className="text-[10px] text-slate-400 uppercase tracking-wider mt-1">PDF • JPG • PNG • HEIC</span>
                                         </div>
                                     )}
                                 </div>
 
-                                {newExpense.receipt && (
-                                    <div className="mt-2 flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => setNewExpense({ ...newExpense, receipt: null })}
-                                            className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 font-medium"
-                                        >
-                                            <X size={12} /> Cancel Upload
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                <hr className="border-slate-100" />
 
-                            {/* Footer Buttons */}
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowExpenseModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition"
-                                >
-                                    Save Expense
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                                {/* Section: Receipt */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Receipt / Attachment</label>
+
+                                    {newExpense.existingReceipt && !newExpense.receipt && (
+                                        <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-green-700">
+                                                <CheckSquare size={16} />
+                                                <span className="text-sm font-medium">Receipt Attached</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setViewReceiptUrl(`${api.defaults.baseURL}/${newExpense.existingReceipt}`)}
+                                                className="text-xs text-green-700 hover:text-green-800 underline font-medium"
+                                            >
+                                                View
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition relative">
+                                        {/* Hidden Inputs */}
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            accept="image/jpeg,image/png,image/heic,image/heif,application/pdf"
+                                            onChange={(e) => setNewExpense({ ...newExpense, receipt: e.target.files[0] })}
+                                        />
+                                        <input
+                                            type="file"
+                                            ref={cameraInputRef}
+                                            className="hidden"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={(e) => setNewExpense({ ...newExpense, receipt: e.target.files[0] })}
+                                        />
+
+                                        {newExpense.receipt ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-full">
+                                                    <CheckSquare size={20} />
+                                                </div>
+                                                <span className="text-sm font-medium text-slate-800 break-all px-4">
+                                                    {newExpense.receipt.name}
+                                                </span>
+                                                <span className="text-xs text-green-600 font-medium">Ready to upload</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-3">
+                                                <span className="text-sm font-medium text-slate-600">
+                                                    {newExpense.existingReceipt ? 'Replace existing receipt:' : 'Attach receipt:'}
+                                                </span>
+
+                                                <div className="flex gap-3 w-full justify-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => cameraInputRef.current?.click()}
+                                                        className="flex-1 max-w-[140px] flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm"
+                                                    >
+                                                        <Camera size={24} className="text-slate-400" />
+                                                        <span className="text-xs font-medium">Take Photo</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="flex-1 max-w-[140px] flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm"
+                                                    >
+                                                        <Upload size={24} className="text-slate-400" />
+                                                        <span className="text-xs font-medium">Upload File</span>
+                                                    </button>
+                                                </div>
+
+                                                <span className="text-[10px] text-slate-400 uppercase tracking-wider mt-1">PDF • JPG • PNG • HEIC</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {newExpense.receipt && (
+                                        <div className="mt-2 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewExpense({ ...newExpense, receipt: null })}
+                                                className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 font-medium"
+                                            >
+                                                <X size={12} /> Cancel Upload
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Footer Buttons */}
+                                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowExpenseModal(false);
+                                            setEditingExpenseId(null);
+                                            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
+                                        }}
+                                        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition"
+                                    >
+                                        Save Expense
+                                    </button>
+                                </div>
+                            </form>
+                        </div >
+                    </div >
+                )
+            }
 
             {/* Add Member Modal */}
-            {showAddMemberModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Add Member</h2>
-                        <form onSubmit={handleAddMember} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                                <input
-                                    type="email"
-                                    placeholder="friend@example.com"
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    required
-                                    value={newMemberEmail}
-                                    onChange={(e) => setNewMemberEmail(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setShowAddMemberModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add</button>
-                            </div>
-                        </form>
+            {
+                showAddMemberModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                            <h2 className="text-xl font-bold mb-4">Add Member</h2>
+                            <form onSubmit={handleAddMember} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                    <input
+                                        type="email"
+                                        placeholder="friend@example.com"
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        required
+                                        value={newMemberEmail}
+                                        onChange={(e) => setNewMemberEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button type="button" onClick={() => setShowAddMemberModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
+                                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
@@ -1041,52 +1069,54 @@ const GroupDetails = () => {
 
             {/* Receipt Modal */}
             {/* Receipt Modal */}
-            {viewReceiptUrl && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setViewReceiptUrl(null)}>
-                    <div className="bg-white p-4 rounded-lg max-w-4xl max-h-[90vh] w-full overflow-auto relative" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4 border-b pb-2">
-                            <h3 className="font-bold text-lg text-slate-800">Receipt</h3>
-                            <div className="flex gap-2">
-                                <a
-                                    href={viewReceiptUrl}
-                                    download
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-600 transition"
-                                    title="Download"
-                                >
-                                    <FileText size={20} />
-                                </a>
-                                <button
-                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-600 transition"
-                                    onClick={() => setViewReceiptUrl(null)}
-                                >
-                                    <X size={20} />
-                                </button>
+            {
+                viewReceiptUrl && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setViewReceiptUrl(null)}>
+                        <div className="bg-white p-4 rounded-lg max-w-4xl max-h-[90vh] w-full overflow-auto relative" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                <h3 className="font-bold text-lg text-slate-800">Receipt</h3>
+                                <div className="flex gap-2">
+                                    <a
+                                        href={viewReceiptUrl}
+                                        download
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-600 transition"
+                                        title="Download"
+                                    >
+                                        <FileText size={20} />
+                                    </a>
+                                    <button
+                                        className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-600 transition"
+                                        onClick={() => setViewReceiptUrl(null)}
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center bg-slate-50 rounded-lg overflow-hidden min-h-[300px] items-center">
+                                {viewReceiptUrl.toLowerCase().includes('.pdf') ? (
+                                    <iframe src={viewReceiptUrl} className="w-full h-[70vh]" title="Receipt PDF"></iframe>
+                                ) : /\.(jpeg|jpg|png|gif|webp)$/i.test(viewReceiptUrl) ? (
+                                    <img src={viewReceiptUrl} alt="Receipt" className="max-w-full max-h-[70vh] object-contain" />
+                                ) : (
+                                    <div className="p-8 text-center text-slate-500">
+                                        <div className="mb-4 flex justify-center text-slate-300">
+                                            <FileText size={64} />
+                                        </div>
+                                        <p className="mb-4">This file format cannot be previewed in the browser.</p>
+                                        <a href={viewReceiptUrl} download className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium">
+                                            Download File to View
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        <div className="flex justify-center bg-slate-50 rounded-lg overflow-hidden min-h-[300px] items-center">
-                            {viewReceiptUrl.toLowerCase().includes('.pdf') ? (
-                                <iframe src={viewReceiptUrl} className="w-full h-[70vh]" title="Receipt PDF"></iframe>
-                            ) : /\.(jpeg|jpg|png|gif|webp)$/i.test(viewReceiptUrl) ? (
-                                <img src={viewReceiptUrl} alt="Receipt" className="max-w-full max-h-[70vh] object-contain" />
-                            ) : (
-                                <div className="p-8 text-center text-slate-500">
-                                    <div className="mb-4 flex justify-center text-slate-300">
-                                        <FileText size={64} />
-                                    </div>
-                                    <p className="mb-4">This file format cannot be previewed in the browser.</p>
-                                    <a href={viewReceiptUrl} download className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium">
-                                        Download File to View
-                                    </a>
-                                </div>
-                            )}
-                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

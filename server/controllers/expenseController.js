@@ -16,8 +16,8 @@ exports.createExpense = async (req, res) => {
 
         // Create Expense
         const expenseResult = await client.query(
-            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type, receipt_path) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [group_id, paid_by || req.user.id, title, amount, split_type || 'equal', receipt_path]
+            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type, receipt_path, expense_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [group_id, paid_by || req.user.id, title, amount, split_type || 'equal', receipt_path, req.body.expense_date || new Date()]
         );
         const expense = expenseResult.rows[0];
 
@@ -242,9 +242,9 @@ exports.updateExpense = async (req, res) => {
         }
 
         // 2. Update Expense Record
-        let updateQuery = 'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4';
-        let queryParams = [title, amount, split_type || 'equal', paid_by];
-        let paramCount = 5;
+        let updateQuery = 'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4, expense_date = $5';
+        let queryParams = [title, amount, split_type || 'equal', paid_by, req.body.expense_date || new Date()];
+        let paramCount = 6;
 
         if (receipt_path) {
             updateQuery += `, receipt_path = $${paramCount}`;

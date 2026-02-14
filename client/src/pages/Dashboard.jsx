@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Users, Calendar } from 'lucide-react';
+import { Plus, Users, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -13,7 +13,7 @@ const Dashboard = () => {
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'danger', confirmText: 'Confirm', onConfirm: null });
     const [newGroupName, setNewGroupName] = useState('');
     const [newGroupDesc, setNewGroupDesc] = useState('');
     const [newGroupCurrency, setNewGroupCurrency] = useState('USD');
@@ -56,11 +56,37 @@ const Dashboard = () => {
             console.error(err);
             if (err.response && err.response.status === 403 && err.response.data.error.includes('Free plan limit')) {
                 setShowModal(false);
-                setShowUpgradeModal(true);
+                setConfirmModal({
+                    isOpen: true,
+                    title: 'Free Plan Limit Reached',
+                    message: 'You have reached the maximum number of groups allowed on the Free plan. Upgrade to Premium to create unlimited groups.',
+                    confirmText: 'Upgrade now',
+                    type: 'warning',
+                    onConfirm: () => window.location.href = '/dashboard/pricing'
+                });
             } else {
                 alert('Failed to create group. Please try again.');
             }
         }
+    };
+
+    const handleDeleteGroup = async (groupId, groupName) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Group',
+            message: `Are you sure you want to delete "${groupName}"? This action cannot be undone and will delete all associated expenses and tasks.`,
+            confirmText: 'Delete Group',
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/groups/${groupId}`);
+                    fetchGroups();
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to delete group');
+                }
+            }
+        });
     };
 
     if (loading) return <div className="p-8 text-center text-slate-500">Loading groups...</div>;
@@ -91,23 +117,40 @@ const Dashboard = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {groups.map((group) => (
-                        <Link key={group.id} to={`groups/${group.id}`} className="block group">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-100 transition h-full flex flex-col">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="bg-indigo-100 text-indigo-600 p-3 rounded-lg">
-                                        <Users size={24} />
+                        <div key={group.id} className="relative group block h-full">
+                            <Link to={`groups/${group.id}`} className="block h-full">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-100 transition h-full flex flex-col relative">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="bg-indigo-100 text-indigo-600 p-3 rounded-lg">
+                                            <Users size={24} />
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${group.role === 'owner' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                            {group.role}
+                                        </span>
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded-full ${group.role === 'owner' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                                        {group.role}
-                                    </span>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition">{group.name}</h3>
+                                    <p className="text-slate-500 text-sm mb-4 line-clamp-2 flex-grow">{group.description || 'No description'}</p>
+                                    <div className="pt-4 border-t border-slate-50 flex items-center justify-between mt-auto">
+                                        <div className="flex items-center text-slate-400 text-sm gap-2">
+                                            <Calendar size={14} /> Created {new Date(group.created_at).toLocaleDateString()}
+                                        </div>
+                                        {group.role === 'owner' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleDeleteGroup(group.id, group.name);
+                                                }}
+                                                className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition flex items-center gap-1 font-medium text-xs sm:text-sm z-10"
+                                                title="Delete Group"
+                                            >
+                                                <Trash2 size={16} /> Delete Group
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition">{group.name}</h3>
-                                <p className="text-slate-500 text-sm mb-4 line-clamp-2 flex-grow">{group.description || 'No description'}</p>
-                                <div className="pt-4 border-t border-slate-50 flex items-center text-slate-400 text-sm gap-2">
-                                    <Calendar size={14} /> Created {new Date(group.created_at).toLocaleDateString()}
-                                </div>
-                            </div>
-                        </Link>
+                            </Link>
+                        </div>
                     ))}
                 </div>
             )}
@@ -155,13 +198,16 @@ const Dashboard = () => {
             )}
 
             <ConfirmationModal
-                isOpen={showUpgradeModal}
-                onClose={() => setShowUpgradeModal(false)}
-                onConfirm={() => window.location.href = '/dashboard/pricing'}
-                title="Free Plan Limit Reached"
-                message="You have reached the maximum number of groups allowed on the Free plan. Upgrade to Premium to create unlimited groups."
-                confirmText="Upgrade now"
-                type="warning"
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    if (confirmModal.onConfirm) confirmModal.onConfirm();
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                }}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                type={confirmModal.type}
             />
         </div>
     );
