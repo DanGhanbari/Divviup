@@ -16,6 +16,16 @@ if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
 
+// Write Google Cloud Credentials from Env Var (for Production)
+if (!fs.existsSync('service-account-key.json') && process.env.GCP_CREDENTIALS) {
+  try {
+    fs.writeFileSync('service-account-key.json', process.env.GCP_CREDENTIALS);
+    console.log('✅ Created service-account-key.json from environment variable');
+  } catch (err) {
+    console.error('❌ Failed to create service-account-key.json:', err);
+  }
+}
+
 // CORS Configuration
 const allowedOrigins = [
   'https://divviup.vercel.app',

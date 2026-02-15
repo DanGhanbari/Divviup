@@ -1,6 +1,7 @@
 node_modules
 .env
-dist
 .DS_Store
+server/service-account-key.json
+server/verify_vertex_integration.js
 server/uploads/
 uploads/
