@@ -20,10 +20,14 @@ if (!fs.existsSync('uploads')) {
 if (!fs.existsSync('service-account-key.json') && process.env.GCP_CREDENTIALS) {
   try {
     fs.writeFileSync('service-account-key.json', process.env.GCP_CREDENTIALS);
-    console.log('✅ Created service-account-key.json from environment variable');
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = 'service-account-key.json'; // Tell SDK where to find it
+    console.log('✅ Created service-account-key.json and set GOOGLE_APPLICATION_CREDENTIALS');
   } catch (err) {
     console.error('❌ Failed to create service-account-key.json:', err);
   }
+} else if (fs.existsSync('service-account-key.json')) {
+  // If file exists (e.g. local dev), ensure env var is set
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = 'service-account-key.json';
 }
 
 // CORS Configuration
