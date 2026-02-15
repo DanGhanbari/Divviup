@@ -862,7 +862,7 @@ const GroupDetails = () => {
             {/* Expense Modal */}
             {
                 showExpenseModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
                         <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
@@ -903,33 +903,33 @@ const GroupDetails = () => {
                                         <input
                                             type="text"
                                             placeholder="What was it for?"
-                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[44px]"
                                             required
                                             value={newExpense.title}
                                             onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-9 gap-4">
-                                        <div className="col-span-5">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                             <input
                                                 type="date"
-                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[44px]"
                                                 required
                                                 value={newExpense.expense_date}
                                                 onChange={(e) => setNewExpense({ ...newExpense, expense_date: e.target.value })}
                                             />
                                         </div>
-                                        <div className="col-span-4">
+                                        <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>
+                                                <span className="absolute left-3 top-3 text-slate-400">{currencySymbol}</span>
                                                 <input
                                                     type="number"
                                                     placeholder="0.00"
                                                     step="0.01"
-                                                    className="w-full pl-7 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    className="w-full pl-7 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[44px]"
                                                     required
                                                     value={newExpense.amount}
                                                     onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
