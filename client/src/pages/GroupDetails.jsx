@@ -863,7 +863,7 @@ const GroupDetails = () => {
             {
                 showExpenseModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                        <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
                                 {!editingExpenseId && (
@@ -910,8 +910,8 @@ const GroupDetails = () => {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-5 gap-4">
-                                        <div className="col-span-3">
+                                    <div className="grid grid-cols-9 gap-4">
+                                        <div className="col-span-5">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                             <input
                                                 type="date"
@@ -921,7 +921,7 @@ const GroupDetails = () => {
                                                 onChange={(e) => setNewExpense({ ...newExpense, expense_date: e.target.value })}
                                             />
                                         </div>
-                                        <div className="col-span-2">
+                                        <div className="col-span-4">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>
