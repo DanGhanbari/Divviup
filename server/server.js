@@ -17,17 +17,20 @@ if (!fs.existsSync('uploads')) {
 }
 
 // Write Google Cloud Credentials from Env Var (for Production)
-if (!fs.existsSync('service-account-key.json') && process.env.GCP_CREDENTIALS) {
+const path = require('path');
+const keyFilePath = path.resolve(__dirname, 'service-account-key.json');
+
+if (!fs.existsSync(keyFilePath) && process.env.GCP_CREDENTIALS) {
   try {
-    fs.writeFileSync('service-account-key.json', process.env.GCP_CREDENTIALS);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = 'service-account-key.json'; // Tell SDK where to find it
+    fs.writeFileSync(keyFilePath, process.env.GCP_CREDENTIALS);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
     console.log('✅ Created service-account-key.json and set GOOGLE_APPLICATION_CREDENTIALS');
   } catch (err) {
     console.error('❌ Failed to create service-account-key.json:', err);
   }
-} else if (fs.existsSync('service-account-key.json')) {
+} else if (fs.existsSync(keyFilePath)) {
   // If file exists (e.g. local dev), ensure env var is set
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = 'service-account-key.json';
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
 }
 
 // CORS Configuration
