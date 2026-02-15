@@ -203,8 +203,9 @@ const GroupDetails = () => {
             setEditingExpenseId(null);
             fetchData();
         } catch (err) {
-            console.error(err);
-            alert('Failed to save expense');
+            console.error('Save Expense Error:', err);
+            const msg = err.response?.data?.error || 'Failed to save expense';
+            toast.error(msg);
         }
     };
 
