@@ -15,6 +15,8 @@ import LandingPage from './pages/LandingPage';
 
 import { Analytics } from '@vercel/analytics/react';
 
+import { Toaster } from 'react-hot-toast';
+
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -31,6 +33,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster position="top-center" />
         <Routes>
           {/* Public Landing Page */}
           <Route path="/" element={<LandingPage />} />

@@ -1,34 +1,56 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Users, DollarSign, CheckSquare, Plus, Send, UserPlus, Scale, Trash2, Euro, PoundSterling, Pencil, FileText, Camera, Paperclip, X, Upload } from 'lucide-react';
-import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
+import {
+    ArrowLeft, Plus, Settings, Users,
+    DollarSign, Calendar, Clock, CheckCircle, CheckSquare,
+    AlertCircle, Trash2, X, Receipt,
+    Filter, Download, Search, Camera, Send, UserPlus, Scale, Euro, PoundSterling, Pencil, FileText, Paperclip, Upload
+} from 'lucide-react';
+import clsx from 'clsx';
+import { toast } from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 
 const GroupDetails = () => {
     const { id } = useParams();
-    const { user } = useAuth();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const fileInputRef = useRef(null);
+    const scanInputRef = useRef(null);
+
     const [group, setGroup] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [tasks, setTasks] = useState([]);
-    const [activeTab, setActiveTab] = useState('expenses');
     const [balances, setBalances] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [members, setMembers] = useState([]); // Assuming members will be fetched or derived from group
+    const [activeTab, setActiveTab] = useState('expenses');
+
+    console.log('GroupDetails Render State:', { id, loading, group, expensesCount: expenses?.length });
 
     // Modal State
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'danger', onConfirm: null });
 
     // Refs for file inputs
-    const fileInputRef = useRef(null);
-    const cameraInputRef = useRef(null);
+    const cameraInputRef = useRef(null); // Keep existing cameraInputRef if it's used elsewhere
 
     // Forms
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [newExpense, setNewExpense] = useState({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
+    const [newExpense, setNewExpense] = useState({
+        title: '',
+        amount: '',
+        split_type: 'equal',
+        splits: {},
+        receipt: null,
+        existingReceipt: null,
+        paid_by: '', // Added paid_by to newExpense state
+        expense_date: new Date().toISOString().split('T')[0]
+    });
+    const [editingExpenseId, setEditingExpenseId] = useState(null);
+    const [isScanning, setIsScanning] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -80,9 +102,61 @@ const GroupDetails = () => {
         };
     }, [id]);
 
-    const [editingExpenseId, setEditingExpenseId] = useState(null);
+
 
     // ... (fetchData and useEffect remain same)
+
+    const handleScanReceipt = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        const formData = new FormData();
+        formData.append('receipt', file);
+
+        try {
+            const token = localStorage.getItem('token');
+
+            const res = await api.post('/api/receipts/scan', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const { title, amount, date } = res.data;
+
+            setNewExpense(prev => ({
+                ...prev,
+                title: title || prev.title,
+                amount: amount ? String(amount) : prev.amount,
+                expense_date: date || prev.expense_date
+            }));
+
+            toast.success('Receipt scanned successfully!');
+
+            // Prompt to attach the receipt image
+            setConfirmModal({
+                isOpen: true,
+                title: 'Attach Receipt?',
+                message: 'Do you want to attach the scanned image to this expense?',
+                type: 'info',
+                confirmText: 'Yes, Attach',
+                onConfirm: () => {
+                    setNewExpense(prev => ({ ...prev, receipt: file }));
+                    toast.success('Receipt attached!');
+                }
+            });
+
+        } catch (err) {
+            console.error(err); // Keep error log for debugging
+            const errorMessage = err.response?.data?.error || 'Failed to analyze receipt';
+            toast.error(errorMessage);
+        } finally {
+            setIsScanning(false);
+            if (scanInputRef.current) scanInputRef.current.value = '';
+        }
+    };
 
     const handleSaveExpense = async (e) => {
         e.preventDefault();
@@ -408,10 +482,6 @@ const GroupDetails = () => {
         });
     };
 
-    const isOwner = group?.members.find(m => m.id === user?.id)?.role === 'owner';
-    const isAdmin = group?.members.find(m => m.id === user?.id)?.role === 'admin';
-    const canExport = isOwner || isAdmin;
-
     const handleRemoveMember = (memberId) => {
         setConfirmModal({
             isOpen: true,
@@ -431,14 +501,18 @@ const GroupDetails = () => {
         });
     };
 
+    if (loading) return <div className="p-8 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div></div>;
+    if (!group) return <div className="p-8 text-center text-red-500">Group not found</div>;
+
+    const isOwner = group.members.find(m => m.id === user?.id)?.role === 'owner';
+    const isAdmin = group.members.find(m => m.id === user?.id)?.role === 'admin';
+    const canExport = isOwner || isAdmin;
+
     const currencySymbol = {
         'USD': '$',
         'GBP': '£',
         'EUR': '€'
-    }[group?.currency] || '$';
-
-    if (loading) return <div className="p-8 text-center">Loading...</div>;
-    if (!group) return <div className="p-8 text-center text-red-500">Group not found</div>;
+    }[group.currency] || '$';
 
     return (
         <div>
@@ -660,7 +734,7 @@ const GroupDetails = () => {
 
                                     {/* Swapped: Amount Last (on Desktop) */}
                                     <div className="text-right hidden sm:block min-w-[6rem]">
-                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(0)}</span>
+                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
                                     </div>
 
                                 </div>
@@ -790,7 +864,37 @@ const GroupDetails = () => {
                 showExpenseModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                            <h2 className="text-xl font-bold mb-4">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
+                                {!editingExpenseId && (
+                                    <button
+                                        type="button"
+                                        onClick={() => scanInputRef.current?.click()}
+                                        disabled={isScanning}
+                                        className="text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:from-blue-600 hover:to-indigo-700 transition shadow-sm"
+                                    >
+                                        {isScanning ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                                                Scanning...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Camera size={14} />
+                                                Scan Receipt
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                                <input
+                                    type="file"
+                                    ref={scanInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={handleScanReceipt}
+                                />
+                            </div>
                             <form onSubmit={handleSaveExpense} className="space-y-6">
                                 {/* Section: Main Details */}
                                 <div className="space-y-4">
@@ -806,8 +910,8 @@ const GroupDetails = () => {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                                    <div className="grid grid-cols-5 gap-4">
+                                        <div className="col-span-3">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                             <input
                                                 type="date"
@@ -817,7 +921,7 @@ const GroupDetails = () => {
                                                 onChange={(e) => setNewExpense({ ...newExpense, expense_date: e.target.value })}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="col-span-2">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-2 text-slate-400">{currencySymbol}</span>

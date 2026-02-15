@@ -46,6 +46,13 @@ app.use(cors(corsOptions));
 app.use('/payments/webhook', express.raw({ type: 'application/json' }));
 
 app.use(express.json());
+
+// Request Logging Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use('/uploads', express.static('uploads'));
 
 
@@ -206,6 +213,7 @@ app.use('/payments', require('./routes/paymentRoutes'));
 app.use('/', expenseRoutes); // Mount at root, paths defined in router
 app.use('/groups/:group_id/tasks', taskRoutes);
 app.use('/groups', require('./routes/groupRoutes'));
+app.use('/api/receipts', require('./routes/receiptRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {
