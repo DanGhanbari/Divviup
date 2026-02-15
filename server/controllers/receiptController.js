@@ -81,7 +81,7 @@ const scanReceipt = async (req, res) => {
                             mimeType: 'image/jpeg'
                         }
                     },
-                    { text: 'Analyze this receipt and extract the title, total amount, and date.' }
+                    { text: 'Analyze this receipt. Extract the merchant name as "title", total amount as "amount", and transaction date as "date". Format date as YYYY-MM-DD. If year is missing, assume current year.' }
                 ]
             }]
         };
