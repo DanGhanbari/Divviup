@@ -86,7 +86,35 @@ const scanReceipt = async (req, res) => {
             }]
         };
 
-        const result = await model.generateContent(request);
+        // Retry mechanism for Vertex AI calls
+        const maxRetries = 3;
+        let retryCount = 0;
+        let finalError = null;
+        let result = null;
+
+        while (retryCount < maxRetries) {
+            try {
+                result = await model.generateContent(request);
+                break; // Success, exit loop
+            } catch (err) {
+                const errString = err.toString();
+                if (errString.includes('429') || errString.includes('RESOURCE_EXHAUSTED')) {
+                    retryCount++;
+                    console.warn(`[VertexAI] Rate limit hit. Retrying (${retryCount}/${maxRetries})...`);
+                    if (retryCount === maxRetries) {
+                        finalError = err;
+                        break;
+                    }
+                    // Exponential backoff: 1s, 2s, 4s
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+                } else {
+                    throw err; // Non-retriable error
+                }
+            }
+        }
+
+        if (finalError) throw finalError;
+
         const response = await result.response;
 
         // Vertex AI returns a structured JSON object directly in candidates[0].content.parts[0].text
