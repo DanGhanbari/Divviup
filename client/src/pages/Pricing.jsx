@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { loadStripe } from '@stripe/stripe-js';
 import ConfirmationModal from '../components/ConfirmationModal';
 import api from '../api';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-
 const Pricing = () => {
     const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);

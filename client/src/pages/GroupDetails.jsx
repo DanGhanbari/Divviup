@@ -24,11 +24,9 @@ const GroupDetails = () => {
 
     const [group, setGroup] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [balances, setBalances] = useState([]);
-    const [members, setMembers] = useState([]); // Assuming members will be fetched or derived from group
     const [activeTab, setActiveTab] = useState('expenses');
 
     console.log('GroupDetails Render State:', { id, loading, group, expensesCount: expenses?.length });
@@ -59,7 +57,7 @@ const GroupDetails = () => {
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [isFetchingRate, setIsFetchingRate] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = React.useCallback(async () => {
         try {
             const groupRes = await api.get(`/groups/${id}`);
             setGroup(groupRes.data);
@@ -80,7 +78,7 @@ const GroupDetails = () => {
         } catch (err) {
             console.error(err);
         }
-    };
+    }, [id]);
 
     const [viewReceiptUrl, setViewReceiptUrl] = useState(null);
 
@@ -109,7 +107,7 @@ const GroupDetails = () => {
             socket.off('group_updated');
             socket.disconnect();
         };
-    }, [id]);
+    }, [id, fetchData]);
 
 
 
