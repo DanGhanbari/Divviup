@@ -131,7 +131,7 @@ const Layout = () => {
                         <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <span>v4.0.0</span>
+                        <span>v{pkg.version}</span>
                     </div>
                 </div>
             </footer>
