@@ -81,7 +81,7 @@ const scanReceipt = async (req, res) => {
                             mimeType: 'image/jpeg'
                         }
                     },
-                    { text: 'Analyze this receipt. Extract the merchant name as "title", total amount as "amount", and transaction date as "date". Format date as YYYY-MM-DD. If year is missing, assume current year. Use context (like currency symbol, address) to determine if date is MM/DD (US) or DD/MM (International). Default to US format if currency is $ or ambiguous.' }
+                    { text: 'Analyze this receipt. Extract the merchant name as "title", total amount as "amount", transaction date as "date", and currency as "currency" (ISO 4217 code like USD, EUR, GBP). Format date as YYYY-MM-DD. If year is missing, assume current year. Use context (like currency symbol, address) to determine if date is MM/DD (US) or DD/MM (International). Default currency to USD if symbol is $ or ambiguous.' }
                 ]
             }]
         };

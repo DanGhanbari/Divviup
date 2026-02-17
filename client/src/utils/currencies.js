@@ -1,0 +1,42 @@
+export const currencies = [
+    { code: 'USD', symbol: '$', name: 'US Dollar' },
+    { code: 'EUR', symbol: '€', name: 'Euro' },
+    { code: 'GBP', symbol: '£', name: 'British Pound' },
+    { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar' },
+    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+    { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+    { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+    { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+    { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc' },
+    { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+    { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso' },
+    { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+    { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
+    { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+    { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+    { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+    { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+    { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
+    { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
+    { code: 'AED', symbol: 'د.إ', name: 'United Arab Emirates Dirham' },
+    { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
+    { code: 'THB', symbol: '฿', name: 'Thai Baht' },
+    { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah' },
+    { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
+    { code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
+    { code: 'VND', symbol: '₫', name: 'Vietnamese Dong' },
+    { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
+    { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound' },
+    { code: 'ARS', symbol: '$', name: 'Argentine Peso' },
+    { code: 'CLP', symbol: '$', name: 'Chilean Peso' },
+    { code: 'COP', symbol: '$', name: 'Colombian Peso' },
+    { code: 'PEN', symbol: 'S/', name: 'Peruvian Sol' },
+    { code: 'UAH', symbol: '₴', name: 'Ukrainian Hryvnia' },
+    { code: 'PLN', symbol: 'zł', name: 'Polish Zloty' },
+];
+
+export const getSymbol = (code) => {
+    const currency = currencies.find(c => c.code === code);
+    return currency ? currency.symbol : '$';
+};

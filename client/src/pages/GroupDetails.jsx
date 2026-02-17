@@ -6,11 +6,13 @@ import {
     ArrowLeft, Plus, Settings, Users,
     DollarSign, Calendar, Clock, CheckCircle, CheckSquare,
     AlertCircle, Trash2, X, Receipt,
-    Filter, Download, Search, Camera, Send, UserPlus, Scale, Euro, PoundSterling, Pencil, FileText, Paperclip, Upload
+    Filter, Download, Search, Camera, Send, UserPlus, Scale, Euro, PoundSterling, Pencil, FileText, Paperclip, Upload, CircleDollarSign
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
+import CurrencyPicker from '../components/CurrencyPicker';
+import { getSymbol } from '../utils/currencies';
 import { socket } from '../socket';
 
 const GroupDetails = () => {
@@ -47,6 +49,7 @@ const GroupDetails = () => {
         receipt: null,
         existingReceipt: null,
         paid_by: '', // Added paid_by to newExpense state
+        currency: 'USD',
         expense_date: new Date().toISOString().split('T')[0]
     });
     const [editingExpenseId, setEditingExpenseId] = useState(null);
@@ -54,6 +57,7 @@ const GroupDetails = () => {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [isFetchingRate, setIsFetchingRate] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -68,6 +72,11 @@ const GroupDetails = () => {
 
             const balancesRes = await api.get(`/groups/${id}/balances`);
             setBalances(balancesRes.data);
+
+            // Set default currency for new expenses based on group settings
+            if (groupRes.data && groupRes.data.currency) {
+                setNewExpense(prev => ({ ...prev, currency: groupRes.data.currency }));
+            }
         } catch (err) {
             console.error(err);
         }
@@ -130,7 +139,8 @@ const GroupDetails = () => {
                 ...prev,
                 title: title || prev.title,
                 amount: amount ? String(amount) : prev.amount,
-                expense_date: date || prev.expense_date
+                expense_date: date || prev.expense_date,
+                currency: res.data.currency || prev.currency // Use detected currency or keep existing
             }));
 
             toast.success('Receipt scanned successfully!');
@@ -182,6 +192,7 @@ const GroupDetails = () => {
             formData.append('amount', newExpense.amount);
             formData.append('split_type', newExpense.split_type);
             formData.append('expense_date', newExpense.expense_date);
+            formData.append('currency', newExpense.currency);
             if (newExpense.paid_by) formData.append('paid_by', newExpense.paid_by);
             if (newExpense.receipt) formData.append('receipt', newExpense.receipt);
 
@@ -199,7 +210,16 @@ const GroupDetails = () => {
             }
 
             setShowExpenseModal(false);
-            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
+            setNewExpense({
+                title: '',
+                amount: '',
+                split_type: 'equal',
+                splits: {},
+                receipt: null,
+                existingReceipt: null,
+                currency: group?.currency || 'USD',
+                expense_date: new Date().toISOString().split('T')[0]
+            });
             setEditingExpenseId(null);
             fetchData();
         } catch (err) {
@@ -237,7 +257,8 @@ const GroupDetails = () => {
                 splits: splitsState,
                 receipt: null, // Reset file input
                 existingReceipt: fullExpense.receipt_path, // Store path for display
-                expense_date: fullExpense.expense_date ? new Date(fullExpense.expense_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                expense_date: fullExpense.expense_date ? new Date(fullExpense.expense_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                currency: fullExpense.currency || 'USD'
             });
 
             setShowExpenseModal(true);
@@ -603,14 +624,7 @@ const GroupDetails = () => {
                     onClick={() => setActiveTab('expenses')}
                     className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
-                    {(() => {
-                        const Icon = {
-                            'USD': DollarSign,
-                            'GBP': PoundSterling,
-                            'EUR': Euro
-                        }[group?.currency] || DollarSign;
-                        return <Icon size={18} />;
-                    })()} Expenses
+                    <ircleDollarSign size={18} /> Expenses
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
@@ -633,7 +647,16 @@ const GroupDetails = () => {
                         <h2 className="text-xl font-bold text-slate-800">Expenses</h2>
                         <button onClick={() => {
                             setEditingExpenseId(null);
-                            setNewExpense({ title: '', amount: '', split_type: 'equal', splits: {}, receipt: null, existingReceipt: null, expense_date: new Date().toISOString().split('T')[0] });
+                            setNewExpense({
+                                title: '',
+                                amount: '',
+                                split_type: 'equal',
+                                splits: {},
+                                receipt: null,
+                                existingReceipt: null,
+                                currency: group?.currency || 'USD',
+                                expense_date: new Date().toISOString().split('T')[0]
+                            });
                             setShowExpenseModal(true);
                         }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700">
                             <Plus size={16} /> Add Expense
@@ -646,7 +669,20 @@ const GroupDetails = () => {
                                 <div className="flex-grow min-w-0 flex flex-col gap-1">
                                     <div className="flex justify-between items-start sm:block">
                                         <h3 className="font-semibold text-slate-800 break-words leading-tight mr-2 sm:mr-0" title={expense.title}>{expense.title}</h3>
-                                        <span className="sm:hidden block text-lg font-bold text-indigo-600 whitespace-nowrap">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
+                                        {String(expense.currency || 'USD').trim().toUpperCase() !== String(group.currency || 'USD').trim().toUpperCase() ? (
+                                            <div className="flex flex-col items-end sm:hidden">
+                                                <span className="text-lg font-bold text-indigo-600 whitespace-nowrap">
+                                                    {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                                </span>
+                                                <span className="text-xs text-slate-500 font-medium">
+                                                    {getSymbol(expense.currency)}{Number(expense.original_amount || expense.amount).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="sm:hidden block text-lg font-bold text-indigo-600 whitespace-nowrap">
+                                                {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <p className="text-sm text-slate-500 truncate">
@@ -735,7 +771,25 @@ const GroupDetails = () => {
 
                                     {/* Swapped: Amount Last (on Desktop) */}
                                     <div className="text-right hidden sm:block min-w-[6rem]">
-                                        <span className="block text-lg font-bold text-indigo-600">{currencySymbol}{Number(expense.amount).toFixed(2)}</span>
+                                        {String(expense.currency || 'USD').trim().toUpperCase() !== String(group.currency || 'USD').trim().toUpperCase() ? (
+                                            <div className="flex flex-col items-end">
+                                                <div className="group relative">
+                                                    <span className="block text-lg font-bold text-indigo-600 cursor-help border-b border-dotted border-indigo-300">
+                                                        {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                                    </span>
+                                                    <div className="absolute bottom-full right-0 mb-2 invisible group-hover:visible bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">
+                                                        Rate: {Number(expense.exchange_rate).toFixed(4)}
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-slate-500 font-medium">
+                                                    {getSymbol(expense.currency)}{Number(expense.original_amount || expense.amount).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="block text-lg font-bold text-indigo-600">
+                                                {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                            </span>
+                                        )}
                                     </div>
 
                                 </div>
@@ -912,50 +966,104 @@ const GroupDetails = () => {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                                        <div className="col-span-1">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                             <input
                                                 type="date"
-                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[44px]"
+                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[42px]"
                                                 required
                                                 value={newExpense.expense_date}
                                                 onChange={(e) => setNewExpense({ ...newExpense, expense_date: e.target.value })}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="flex-1 min-w-[120px]">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-3 text-slate-400">{currencySymbol}</span>
+                                                <div className="absolute left-0 top-0 bottom-0 pl-1 flex items-center">
+                                                    <CurrencyPicker
+                                                        selectedCurrency={newExpense.currency}
+                                                        onSelect={(code) => {
+                                                            setNewExpense(prev => ({ ...prev, currency: code }));
+                                                            // Fetch rate if different
+                                                            if (code !== (group?.currency || 'USD')) {
+                                                                setIsFetchingRate(true);
+                                                                api.get(`/api/currency/rate?from=${code}&to=${group?.currency || 'USD'}`)
+                                                                    .then(res => {
+                                                                        setNewExpense(prev => ({ ...prev, exchange_rate: res.data.rate }));
+                                                                    })
+                                                                    .catch(err => {
+                                                                        console.error("Failed to fetch rate", err);
+                                                                        toast.error("Could not fetch exchange rate. Please enter manually.");
+                                                                        setNewExpense(prev => ({ ...prev, exchange_rate: '' })); // Clear to force manual entry
+                                                                    })
+                                                                    .finally(() => setIsFetchingRate(false));
+                                                            } else {
+                                                                setNewExpense(prev => ({ ...prev, exchange_rate: 1.0 }));
+                                                            }
+                                                        }}
+                                                        minimal={true}
+                                                        buttonClassName="h-full px-2 flex items-center justify-center bg-transparent hover:bg-slate-100 rounded focus:outline-none"
+                                                    />
+                                                </div>
                                                 <input
                                                     type="number"
-                                                    placeholder="0.00"
                                                     step="0.01"
-                                                    className="w-full pl-7 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none min-h-[44px]"
-                                                    required
+                                                    className="w-full pl-24 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-right font-mono text-lg"
+                                                    placeholder="0.00"
                                                     value={newExpense.amount}
                                                     onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                                                    required
                                                 />
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {(isOwner || isAdmin) && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Paid By</label>
-                                            <select
-                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                                                value={newExpense.paid_by || ''}
-                                                onChange={(e) => setNewExpense({ ...newExpense, paid_by: e.target.value })}
-                                            >
-                                                <option value="">Select Payer ({user?.name})</option>
-                                                {group.members.map(member => (
-                                                    <option key={member.id} value={member.id}>
-                                                        {member.name} {member.id === user?.id ? '(You)' : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
+                                        {/* Manual Exchange Rate Input */}
+                                        {newExpense.currency !== (group?.currency || 'USD') && (
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                                    Rate (1 {newExpense.currency} = ?)
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="0.000001"
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
+                                                        placeholder="1.0"
+                                                        value={newExpense.exchange_rate || ''}
+                                                        onChange={(e) => setNewExpense({ ...newExpense, exchange_rate: e.target.value })}
+                                                    />
+                                                    {isFetchingRate && (
+                                                        <div className="absolute right-2 top-2">
+                                                            <div className="animate-spin h-4 w-4 border-2 border-indigo-500 rounded-full border-t-transparent"></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {newExpense.amount && newExpense.exchange_rate && (
+                                                    <p className="text-xs text-slate-500 mt-1 text-right">
+                                                        ≈ {currencySymbol}{(parseFloat(newExpense.amount) * parseFloat(newExpense.exchange_rate)).toFixed(2)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {(isOwner || isAdmin) && (
+                                            <div className="col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Paid By</label>
+                                                <select
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                                    value={newExpense.paid_by || ''}
+                                                    onChange={(e) => setNewExpense({ ...newExpense, paid_by: e.target.value })}
+                                                >
+                                                    <option value="">Select Payer ({user?.name})</option>
+                                                    {group.members.map(member => (
+                                                        <option key={member.id} value={member.id}>
+                                                            {member.name} {member.id === user?.id ? '(You)' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <hr className="border-slate-100" />

@@ -24,6 +24,7 @@ CREATE TABLE groups (
   name TEXT NOT NULL,
   description TEXT,
   is_one_time BOOLEAN DEFAULT FALSE,
+  currency TEXT DEFAULT 'USD',
   created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,7 +43,11 @@ CREATE TABLE expenses (
   group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
   paid_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
+  title TEXT NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
+  currency TEXT,
+  original_amount DECIMAL(10, 2),
+  exchange_rate DECIMAL(10, 6) DEFAULT 1.0,
   split_type TEXT CHECK (split_type IN ('equal', 'percentage', 'share', 'custom')) DEFAULT 'equal',
   receipt_path TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

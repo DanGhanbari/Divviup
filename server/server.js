@@ -111,6 +111,9 @@ const initDb = async () => {
               paid_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
               title TEXT NOT NULL,
               amount DECIMAL(10, 2) NOT NULL,
+              currency VARCHAR(10) DEFAULT 'USD',
+              original_amount DECIMAL(10, 2),
+              exchange_rate DECIMAL(10, 6) DEFAULT 1.0,
               split_type TEXT CHECK (split_type IN ('equal', 'percentage', 'share', 'custom')) DEFAULT 'equal',
               receipt_path TEXT,
               expense_date DATE DEFAULT CURRENT_DATE,
@@ -167,6 +170,9 @@ const initDb = async () => {
             -- Migrations
             ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_path TEXT;
             ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_date DATE DEFAULT CURRENT_DATE;
+            ALTER TABLE expenses ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'USD';
+            ALTER TABLE expenses ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10, 2);
+            ALTER TABLE expenses ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(10, 6) DEFAULT 1.0;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
@@ -233,6 +239,7 @@ app.use('/', expenseRoutes); // Mount at root, paths defined in router
 app.use('/groups/:group_id/tasks', taskRoutes);
 app.use('/groups', require('./routes/groupRoutes'));
 app.use('/api/receipts', require('./routes/receiptRoutes'));
+app.use('/api/currency', require('./routes/currencyRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {

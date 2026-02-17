@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import CurrencyPicker from '../components/CurrencyPicker';
 import api from '../api';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, Users, Calendar, Trash2 } from 'lucide-react';
@@ -177,16 +178,11 @@ const Dashboard = () => {
                                 onChange={(e) => setNewGroupDesc(e.target.value)}
                             />
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
-                                <select
-                                    value={newGroupCurrency}
-                                    onChange={(e) => setNewGroupCurrency(e.target.value)}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                                >
-                                    <option value="USD">USD ($)</option>
-                                    <option value="GBP">GBP (£)</option>
-                                    <option value="EUR">EUR (€)</option>
-                                </select>
+                                <CurrencyPicker
+                                    selectedCurrency={newGroupCurrency}
+                                    onSelect={setNewGroupCurrency}
+                                    label="Group Currency"
+                                />
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>

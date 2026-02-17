@@ -2,9 +2,12 @@ const db = require('../db');
 
 exports.createExpense = async (req, res) => {
     const { getIo } = require('../utils/socket');
-    const { group_id } = req.params;
-    const { title, amount, split_type, paid_by, splits } = req.body;
-    const receipt_path = req.file ? req.file.path : null;
+    let { title, amount, currency, paid_by, split_type, receipt_path, exchange_rate, splits, expense_date, group_id } = req.body;
+
+    // Fallback to params if not in body
+    if (!group_id && req.params.group_id) {
+        group_id = req.params.group_id;
+    }
 
     if (!title || !amount || !group_id) {
         return res.status(400).json({ error: 'Title, amount and group_id are required' });
@@ -14,14 +17,55 @@ exports.createExpense = async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // Get Group Currency
+        const groupRes = await client.query('SELECT currency FROM groups WHERE id = $1', [group_id]);
+        if (groupRes.rows.length === 0) {
+            throw new Error('Group not found');
+        }
+        const groupCurrency = groupRes.rows[0].currency || 'USD';
+        const expenseCurrency = currency || groupCurrency;
+
+        // Calculate Converted Amount
+        let finalExchangeRate = parseFloat(exchange_rate) || 1.0;
+        let convertedAmount = parseFloat(amount);
+        let originalAmountVal = parseFloat(amount); // Keep track of input amount
+
+        if (expenseCurrency !== groupCurrency) {
+            if (!exchange_rate) {
+                // Fetch rate if not provided
+                try {
+                    const { getExchangeRate } = require('../utils/currencyService');
+                    finalExchangeRate = await getExchangeRate(expenseCurrency, groupCurrency);
+                } catch (e) {
+                    console.error("Rate fetch failed, defaulting to 1.0", e);
+                    finalExchangeRate = 1.0;
+                }
+            }
+            convertedAmount = (originalAmountVal * finalExchangeRate).toFixed(2);
+        } else {
+            finalExchangeRate = 1.0;
+        }
+
         // Create Expense
+        // Schema: title, amount (converted), currency, original_amount, exchange_rate
         const expenseResult = await client.query(
-            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type, receipt_path, expense_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [group_id, paid_by || req.user.id, title, amount, split_type || 'equal', receipt_path, req.body.expense_date || new Date()]
+            'INSERT INTO expenses (group_id, paid_by, title, amount, split_type, receipt_path, expense_date, currency, original_amount, exchange_rate) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+            [
+                group_id,
+                paid_by || req.user.id,
+                title,
+                convertedAmount,
+                split_type || 'equal',
+                receipt_path,
+                expense_date || new Date(),
+                expenseCurrency,
+                originalAmountVal,
+                finalExchangeRate
+            ]
         );
         const expense = expenseResult.rows[0];
 
-        // Calculate Splits
+        // Calculate Splits (Use Converted Amount)
         if (split_type === 'equal' || !split_type) {
             // Get all group members
             const membersResult = await client.query(
@@ -31,7 +75,7 @@ exports.createExpense = async (req, res) => {
             const members = membersResult.rows;
 
             if (members.length > 0) {
-                const splitAmount = (amount / members.length).toFixed(2);
+                const splitAmount = (convertedAmount / members.length).toFixed(2);
 
                 for (const member of members) {
                     await client.query(
@@ -41,11 +85,6 @@ exports.createExpense = async (req, res) => {
                 }
             }
         } else if ((split_type === 'percentage' || split_type === 'custom') && splits) {
-            // Handle explicit splits provided by frontend
-            // Note: When sending FormData, 'splits' might be a JSON string if sent as text field, 
-            // or we need to ensure it's parsed correctly if the frontend sends it as JSON string stringified.
-            // Multer handles files, but text fields are in req.body.
-            // If splits is a string, parse it.
             let splitsArray = splits;
             if (typeof splits === 'string') {
                 try {
@@ -58,15 +97,42 @@ exports.createExpense = async (req, res) => {
             if (Array.isArray(splitsArray)) {
                 let totalSplitAmount = 0;
                 for (const split of splitsArray) {
+                    // For custom splits, we assume the frontend sends the *converted* amount shares if manual,
+                    // OR we might need logic to distribute the converted amount if they split by %.
+                    // For now, assuming frontend handles the math or sends raw values that sum to 'amount'.
+                    // If frontend sends original currency splits, we should probably convert them too.
+                    // Implementation Detail: Let's assume frontend sends values that sum to the *expense amount*. 
+                    // Since we updated 'amount' to be convertedAmount, frontend must send converted splits OR 
+                    // we re-calculate. 
+                    // Simpler: Just save what frontend sends, but check total.
+                    // Ideally, splits calculation happens on backend for 'equal', but for 'custom', frontend decides.
+                    // If currency differs, frontend should probably assist or we just take the values.
+                    // *CRITICAL*: If I change 'amount' to converted, the splits must sum to converted. 
+
+                    // Logic Adjust: If custom/percentage, we trust the 'amount' and 'splits' from request match.
+                    // BUT we just changed 'amount' to 'convertedAmount'. 
+                    // If user enters 10 EUR (Group USD), converted is 11 USD.
+                    // If split is 5 EUR / 5 EUR, we need to save 5.5 USD / 5.5 USD.
+                    // This is complex. 
+                    // **Simplification**: For MVP, if currency differs, default to 'equal' split or 
+                    // require user to input splits in Group Currency?
+                    // "Splits" usually come as exact amounts for 'custom'.
+                    // Let's apply the exchange rate to the splits too!
+
+                    let splitVal = parseFloat(split.amount);
+                    if (expenseCurrency !== groupCurrency) {
+                        splitVal = (splitVal * finalExchangeRate).toFixed(2);
+                    }
+
                     await client.query(
                         'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                        [expense.id, split.user_id, split.amount]
+                        [expense.id, split.user_id, splitVal]
                     );
-                    totalSplitAmount += parseFloat(split.amount);
+                    totalSplitAmount += parseFloat(splitVal);
                 }
 
-                if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
-                    console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+                if (Math.abs(totalSplitAmount - parseFloat(convertedAmount)) > 0.05) {
+                    console.warn(`Expense ${expense.id} split total (${totalSplitAmount}) does not match expense amount (${convertedAmount})`);
                 }
             }
         }
@@ -206,7 +272,7 @@ exports.getExpenseById = async (req, res) => {
 exports.updateExpense = async (req, res) => {
     const { getIo } = require('../utils/socket');
     const { group_id, id } = req.params;
-    const { title, amount, split_type, paid_by, splits } = req.body;
+    const { title, amount, split_type, paid_by, splits, currency, expense_date } = req.body;
     const receipt_path = req.file ? req.file.path : undefined; // undefined means no update
 
     if (!title || !amount || !group_id) {
@@ -241,10 +307,31 @@ exports.updateExpense = async (req, res) => {
             return res.status(403).json({ error: 'You do not have permission to edit this expense' });
         }
 
+        // Get Group Currency for conversion
+        const groupRes = await client.query('SELECT currency FROM groups WHERE id = $1', [group_id]);
+        const groupCurrency = groupRes.rows[0]?.currency || 'USD';
+        const expenseCurrency = currency || groupCurrency;
+
+        // Calculate Converted Amount
+        let finalExchangeRate = 1.0;
+        let convertedAmount = parseFloat(amount);
+        let originalAmountVal = parseFloat(amount);
+
+        if (expenseCurrency !== groupCurrency) {
+            try {
+                const { getExchangeRate } = require('../utils/currencyService'); // Use utils path
+                finalExchangeRate = await getExchangeRate(expenseCurrency, groupCurrency);
+                convertedAmount = (originalAmountVal * finalExchangeRate).toFixed(2);
+            } catch (e) {
+                console.error("Rate fetch failed during update, defaulting to 1.0", e);
+                finalExchangeRate = 1.0;
+            }
+        }
+
         // 2. Update Expense Record
-        let updateQuery = 'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4, expense_date = $5';
-        let queryParams = [title, amount, split_type || 'equal', paid_by, req.body.expense_date || new Date()];
-        let paramCount = 6;
+        let updateQuery = 'UPDATE expenses SET title = $1, amount = $2, split_type = $3, paid_by = $4, expense_date = $5, currency = $6, original_amount = $7, exchange_rate = $8';
+        let queryParams = [title, convertedAmount, split_type || 'equal', paid_by, expense_date || new Date(), expenseCurrency, originalAmountVal, finalExchangeRate];
+        let paramCount = 9;
 
         if (receipt_path) {
             updateQuery += `, receipt_path = $${paramCount}`;
@@ -275,7 +362,7 @@ exports.updateExpense = async (req, res) => {
             const members = membersResult.rows;
 
             if (members.length > 0) {
-                const splitAmount = (amount / members.length).toFixed(2);
+                const splitAmount = (convertedAmount / members.length).toFixed(2);
 
                 for (const member of members) {
                     await client.query(
@@ -297,15 +384,20 @@ exports.updateExpense = async (req, res) => {
             if (Array.isArray(splitsArray)) {
                 let totalSplitAmount = 0;
                 for (const split of splitsArray) {
+                    let splitVal = parseFloat(split.amount);
+                    if (expenseCurrency !== groupCurrency) {
+                        splitVal = (splitVal * finalExchangeRate).toFixed(2);
+                    }
+
                     await client.query(
                         'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                        [expenseResult.rows[0].id, split.user_id, split.amount]
+                        [expenseResult.rows[0].id, split.user_id, splitVal]
                     );
-                    totalSplitAmount += parseFloat(split.amount);
+                    totalSplitAmount += parseFloat(splitVal);
                 }
                 // Basic validation
-                if (Math.abs(totalSplitAmount - parseFloat(amount)) > 0.05) {
-                    console.warn(`Expense ${expenseResult.rows[0].id} split total (${totalSplitAmount}) does not match expense amount (${amount})`);
+                if (Math.abs(totalSplitAmount - parseFloat(convertedAmount)) > 0.05) {
+                    console.warn(`Expense ${expenseResult.rows[0].id} split total (${totalSplitAmount}) does not match expense amount (${convertedAmount})`);
                 }
             }
         }
