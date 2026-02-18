@@ -515,7 +515,19 @@ const GroupDetails = () => {
                     setGroup({ ...group, members: group.members.filter(m => m.id !== memberId) });
                 } catch (err) {
                     console.error(err);
-                    alert('Failed to remove member');
+                    if (err.response && err.response.data && err.response.data.error) {
+                        // Show specific error from backend (e.g. "Cannot remove member...")
+                        setConfirmModal({
+                            isOpen: true,
+                            title: 'Cannot Remove Member',
+                            message: err.response.data.error,
+                            type: 'warning',
+                            confirmText: 'OK',
+                            onConfirm: () => { } // Just close
+                        });
+                    } else {
+                        alert('Failed to remove member');
+                    }
                 }
             }
         });

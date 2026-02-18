@@ -307,7 +307,36 @@ exports.removeMember = async (req, res) => {
             return res.status(400).json({ error: 'You cannot remove yourself. Delete the group instead.' });
         }
 
-        // 3. Remove Member
+        // 3. New Requirement: Block removal if user has expenses (Paid or Splits)
+        const expenseCheck = await client.query(
+            `SELECT id FROM expenses WHERE group_id = $1 AND paid_by = $2 LIMIT 1`,
+            [id, userId]
+        );
+
+        if (expenseCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: 'Cannot remove member. They have paid for expenses that must be deleted or reassigned first.',
+                code: 'MEMBER_HAS_EXPENSES'
+            });
+        }
+
+        const splitCheck = await client.query(
+            `SELECT es.id FROM expense_splits es
+             JOIN expenses e ON es.expense_id = e.id
+             WHERE e.group_id = $1 AND es.user_id = $2 LIMIT 1`,
+            [id, userId]
+        );
+
+        if (splitCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: 'Cannot remove member. They are part of existing expense splits. Please settle/delete these expenses first.',
+                code: 'MEMBER_HAS_SPLITS'
+            });
+        }
+
+        // 4. Remove Member (Clean Slate only)
         const result = await client.query(
             'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 RETURNING *',
             [id, userId]
@@ -316,48 +345,6 @@ exports.removeMember = async (req, res) => {
         if (result.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Member not found in group' });
-        }
-
-        // 4. Cleanup & Recalculate
-        // A. Remove any remaining splits for this user in this group (for non-equal expenses)
-        await client.query(
-            `DELETE FROM expense_splits 
-             WHERE user_id = $1 AND expense_id IN (SELECT id FROM expenses WHERE group_id = $2)`,
-            [userId, id]
-        );
-
-        // B. Recalculate "Equal" Expenses
-        // Get remaining members
-        const allMembersRes = await client.query('SELECT user_id FROM group_members WHERE group_id = $1', [id]);
-        const allMemberIds = allMembersRes.rows.map(m => m.user_id);
-        const memberCount = allMemberIds.length;
-
-        if (memberCount > 0) {
-            // Get all equal expenses
-            const equalExpensesRes = await client.query(
-                "SELECT id, amount, currency, exchange_rate FROM expenses WHERE group_id = $1 AND split_type = 'equal'",
-                [id]
-            );
-            const equalExpenses = equalExpensesRes.rows;
-
-            if (equalExpenses.length > 0) {
-                console.log(`Recalculating ${equalExpenses.length} equal expenses for ${memberCount} remaining members`);
-
-                for (const expense of equalExpenses) {
-                    const newSplitAmount = (parseFloat(expense.amount) / memberCount).toFixed(2);
-
-                    // Delete old splits
-                    await client.query('DELETE FROM expense_splits WHERE expense_id = $1', [expense.id]);
-
-                    // Insert new splits
-                    for (const mId of allMemberIds) {
-                        await client.query(
-                            'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
-                            [expense.id, mId, newSplitAmount]
-                        );
-                    }
-                }
-            }
         }
 
         await client.query('COMMIT');
