@@ -142,10 +142,10 @@ const Dashboard = () => {
                                                     e.stopPropagation();
                                                     handleDeleteGroup(group.id, group.name);
                                                 }}
-                                                className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition flex items-center gap-1 font-medium text-xs sm:text-sm z-10"
+                                                className="text-slate-400 hover:text-red-500 p-2 rounded-full transition z-10"
                                                 title="Delete Group"
                                             >
-                                                <Trash2 size={16} /> Delete Group
+                                                <Trash2 size={18} />
                                             </button>
                                         )}
                                     </div>
