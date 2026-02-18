@@ -117,8 +117,15 @@ const LandingPage = () => {
             </section>
 
             {/* Footer */}
-            <footer className="py-12 bg-slate-50 text-center text-slate-500 text-sm">
+            <footer className="py-12 bg-slate-50 text-center text-slate-500 text-sm flex flex-col items-center gap-2">
                 <p>© {new Date().getFullYear()} DivviUp. All rights reserved.</p>
+                <div className="flex gap-2 text-xs text-slate-400">
+                    <Link to="/privacy" className="hover:text-slate-500 transition-colors">Privacy Policy</Link>
+                    <span>|</span>
+                    <Link to="/terms" className="hover:text-slate-500 transition-colors">Terms & Conditions</Link>
+                    <span>|</span>
+                    <span className="hover:text-slate-500 transition-colors cursor-pointer">Cookie Settings</span>
+                </div>
             </footer>
         </div>
     );

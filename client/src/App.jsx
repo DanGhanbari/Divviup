@@ -10,10 +10,13 @@ import Settings from './pages/Settings';
 import Pricing from './pages/Pricing';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 import LandingPage from './pages/LandingPage';
 
 import { Analytics } from '@vercel/analytics/react';
+import ScrollToTop from './components/ScrollToTop';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -32,6 +35,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <Toaster position="top-center" />
         <Routes>
@@ -42,6 +46,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           {/* Protected App Routes */}
           <Route path="/dashboard" element={<PrivateRoute><Layout /></PrivateRoute>}>

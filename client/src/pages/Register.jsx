@@ -60,6 +60,17 @@ const Register = () => {
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
+                    <div className="flex items-start gap-2">
+                        <input
+                            type="checkbox"
+                            id="terms"
+                            required
+                            className="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="terms" className="text-sm text-slate-600">
+                            By signing up, I agree to the <Link to="/terms" className="text-indigo-600 hover:underline" target="_blank" rel="noopener noreferrer">Terms and Conditions</Link> and <Link to="/privacy" className="text-indigo-600 hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.
+                        </label>
+                    </div>
                     <button
                         type="submit"
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"

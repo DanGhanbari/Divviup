@@ -131,8 +131,12 @@ const Layout = () => {
                             <span className="font-bold text-slate-700">DivviUp</span>
                             <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
                         </div>
-                        <div className="text-xs text-slate-400 hover:text-slate-500 transition-colors cursor-pointer">
-                            Privacy Policy | Terms & Conditions | Cookie Settings
+                        <div className="flex gap-2 text-xs text-slate-400">
+                            <Link to="/privacy" className="hover:text-slate-500 transition-colors">Privacy Policy</Link>
+                            <span>|</span>
+                            <Link to="/terms" className="hover:text-slate-500 transition-colors">Terms & Conditions</Link>
+                            <span>|</span>
+                            <span className="hover:text-slate-500 transition-colors cursor-pointer">Cookie Settings</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-6">
