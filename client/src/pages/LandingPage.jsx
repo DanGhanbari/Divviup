@@ -124,7 +124,12 @@ const LandingPage = () => {
                     <span>|</span>
                     <Link to="/terms" className="hover:text-slate-500 transition-colors">Terms & Conditions</Link>
                     <span>|</span>
-                    <span className="hover:text-slate-500 transition-colors cursor-pointer">Cookie Settings</span>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('openCookieSettings'))}
+                        className="hover:text-slate-500 transition-colors cursor-pointer"
+                    >
+                        Cookie Settings
+                    </button>
                 </div>
             </footer>
         </div>
