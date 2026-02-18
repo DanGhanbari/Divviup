@@ -55,7 +55,11 @@ const GroupDetails = () => {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [isFetchingRate, setIsFetchingRate] = useState(false);
+    // Filter & Sort State
+    const [showFilters, setShowFilters] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('date_desc'); // date_desc, date_asc, amount_high, amount_low
+    const [filterPayer, setFilterPayer] = useState('all');
 
     const fetchData = React.useCallback(async () => {
         try {
@@ -79,6 +83,33 @@ const GroupDetails = () => {
             console.error(err);
         }
     }, [id]);
+
+    // Derived State: Filtered Expenses
+    const filteredExpenses = React.useMemo(() => {
+        let result = [...expenses];
+
+        // 1. Search
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(e => e.title.toLowerCase().includes(query));
+        }
+
+        // 2. Filter by Payer
+        if (filterPayer !== 'all') {
+            result = result.filter(e => String(e.paid_by) === String(filterPayer));
+        }
+
+        // 3. Sort
+        result.sort((a, b) => {
+            if (sortBy === 'date_desc') return new Date(b.expense_date || b.created_at) - new Date(a.expense_date || a.created_at);
+            if (sortBy === 'date_asc') return new Date(a.expense_date || a.created_at) - new Date(b.expense_date || b.created_at);
+            if (sortBy === 'amount_high') return parseFloat(b.amount) - parseFloat(a.amount);
+            if (sortBy === 'amount_low') return parseFloat(a.amount) - parseFloat(b.amount);
+            return 0;
+        });
+
+        return result;
+    }, [expenses, searchQuery, filterPayer, sortBy]);
 
     const [viewReceiptUrl, setViewReceiptUrl] = useState(null);
 
@@ -649,28 +680,110 @@ const GroupDetails = () => {
             {/* Tab Content */}
             {activeTab === 'expenses' && (
                 <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Expenses</h2>
-                        <button onClick={() => {
-                            setEditingExpenseId(null);
-                            setNewExpense({
-                                title: '',
-                                amount: '',
-                                split_type: 'equal',
-                                splits: {},
-                                receipt: null,
-                                existingReceipt: null,
-                                currency: group?.currency || 'USD',
-                                expense_date: new Date().toISOString().split('T')[0]
-                            });
-                            setShowExpenseModal(true);
-                        }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700">
-                            <Plus size={16} /> Add Expense
-                        </button>
+                    <div className="flex flex-col gap-4 mb-4">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-slate-800">Expenses</h2>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={clsx(
+                                        "p-2 rounded-lg transition border",
+                                        showFilters ? "bg-indigo-50 text-indigo-600 border-indigo-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                    )}
+                                    title="Filter & Sort"
+                                >
+                                    <Filter size={20} />
+                                </button>
+                                <button onClick={() => {
+                                    setEditingExpenseId(null);
+                                    setNewExpense({
+                                        title: '',
+                                        amount: '',
+                                        split_type: 'equal',
+                                        splits: {},
+                                        receipt: null,
+                                        existingReceipt: null,
+                                        currency: group?.currency || 'USD',
+                                        expense_date: new Date().toISOString().split('T')[0]
+                                    });
+                                    setShowExpenseModal(true);
+                                }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700 shadow-sm shadow-indigo-200">
+                                    <Plus size={16} /> <span className="hidden sm:inline">Add Expense</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filter Bar */}
+                        {showFilters && (
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in slide-in-from-top-2 duration-200">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {/* Search */}
+                                    <div className="relative">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search expenses..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                                        />
+                                    </div>
+
+                                    {/* Sort */}
+                                    <div className="relative">
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                            className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition appearance-none"
+                                        >
+                                            <option value="date_desc">Newest First</option>
+                                            <option value="date_asc">Oldest First</option>
+                                            <option value="amount_high">Highest Amount</option>
+                                            <option value="amount_low">Lowest Amount</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                        </div>
+                                    </div>
+
+                                    {/* Filter User */}
+                                    <div className="relative">
+                                        <select
+                                            value={filterPayer}
+                                            onChange={(e) => setFilterPayer(e.target.value)}
+                                            className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition appearance-none"
+                                        >
+                                            <option value="all">All Payers</option>
+                                            {group?.members?.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-3">
-                        {(!expenses || expenses.length === 0) ? <p className="text-slate-500">No expenses yet.</p> : expenses.map(expense => (
+                        {(!filteredExpenses || filteredExpenses.length === 0) ? (
+                            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-slate-400">
+                                    <Search size={24} />
+                                </div>
+                                <p className="text-slate-500 font-medium">No expenses found</p>
+                                {(searchQuery || filterPayer !== 'all') && (
+                                    <button
+                                        onClick={() => { setSearchQuery(''); setFilterPayer('all'); }}
+                                        className="text-indigo-600 text-sm hover:underline mt-2"
+                                    >
+                                        Clear filters
+                                    </button>
+                                )}
+                            </div>
+                        ) : filteredExpenses.map(expense => (
                             <div key={expense.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                 <div className="flex-grow min-w-0 flex flex-col gap-1">
                                     <div className="flex justify-between items-start sm:block">
