@@ -12,6 +12,9 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
+// Trust Proxy (Required for Railway/Vercel to set Secure cookies)
+app.set('trust proxy', 1);
+
 // Ensure uploads directory exists
 const fs = require('fs');
 if (!fs.existsSync('uploads')) {
