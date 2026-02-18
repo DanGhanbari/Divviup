@@ -66,7 +66,7 @@ const CookieConsent = ({ onConsentChange }) => {
                             <p className="font-semibold text-slate-800 mb-1">We value your privacy</p>
                             <p>
                                 We use cookies to enhance your browsing experience and analyze our traffic.
-                                "Strictly Necessary" cookies are essential for the website to function (like logging in).
+                                "Strictly Necessary" cookies are essential for the website to function.
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
