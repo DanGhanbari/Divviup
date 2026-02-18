@@ -287,11 +287,13 @@ exports.deleteGroup = async (req, res) => {
 
 exports.removeMember = async (req, res) => {
     const { getIo } = require('../utils/socket');
+    const client = await db.pool.connect();
     const { id, userId } = req.params;
 
     try {
+        await client.query('BEGIN');
         // 1. Check permissions (Owner only)
-        const ownerCheck = await db.query(
+        const ownerCheck = await client.query(
             'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
             [id, req.user.id]
         );
@@ -306,14 +308,59 @@ exports.removeMember = async (req, res) => {
         }
 
         // 3. Remove Member
-        const result = await db.query(
+        const result = await client.query(
             'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 RETURNING *',
             [id, userId]
         );
 
         if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Member not found in group' });
         }
+
+        // 4. Cleanup & Recalculate
+        // A. Remove any remaining splits for this user in this group (for non-equal expenses)
+        await client.query(
+            `DELETE FROM expense_splits 
+             WHERE user_id = $1 AND expense_id IN (SELECT id FROM expenses WHERE group_id = $2)`,
+            [userId, id]
+        );
+
+        // B. Recalculate "Equal" Expenses
+        // Get remaining members
+        const allMembersRes = await client.query('SELECT user_id FROM group_members WHERE group_id = $1', [id]);
+        const allMemberIds = allMembersRes.rows.map(m => m.user_id);
+        const memberCount = allMemberIds.length;
+
+        if (memberCount > 0) {
+            // Get all equal expenses
+            const equalExpensesRes = await client.query(
+                "SELECT id, amount, currency, exchange_rate FROM expenses WHERE group_id = $1 AND split_type = 'equal'",
+                [id]
+            );
+            const equalExpenses = equalExpensesRes.rows;
+
+            if (equalExpenses.length > 0) {
+                console.log(`Recalculating ${equalExpenses.length} equal expenses for ${memberCount} remaining members`);
+
+                for (const expense of equalExpenses) {
+                    const newSplitAmount = (parseFloat(expense.amount) / memberCount).toFixed(2);
+
+                    // Delete old splits
+                    await client.query('DELETE FROM expense_splits WHERE expense_id = $1', [expense.id]);
+
+                    // Insert new splits
+                    for (const mId of allMemberIds) {
+                        await client.query(
+                            'INSERT INTO expense_splits (expense_id, user_id, amount_due) VALUES ($1, $2, $3)',
+                            [expense.id, mId, newSplitAmount]
+                        );
+                    }
+                }
+            }
+        }
+
+        await client.query('COMMIT');
 
         // Emit real-time update
         try {
@@ -324,8 +371,11 @@ exports.removeMember = async (req, res) => {
 
         res.json({ message: 'Member removed successfully' });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ error: 'Server error removing member' });
+    } finally {
+        client.release();
     }
 };
 
