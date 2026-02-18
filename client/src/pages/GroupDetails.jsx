@@ -618,7 +618,7 @@ const GroupDetails = () => {
                     onClick={() => setActiveTab('expenses')}
                     className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
-                    <CircleDollarSign size={18} /> Expenses
+                    {currencySymbol} Expenses
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
