@@ -928,33 +928,38 @@ const GroupDetails = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold">{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
                                 {!editingExpenseId && (
-                                    <button
-                                        type="button"
-                                        onClick={() => scanInputRef.current?.click()}
-                                        disabled={isScanning}
-                                        className="text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:from-blue-600 hover:to-indigo-700 transition shadow-sm"
-                                    >
-                                        {isScanning ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                                                Scanning...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Camera size={14} />
-                                                Scan Receipt
-                                            </>
-                                        )}
-                                    </button>
+                                    <div className="flex flex-col items-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => scanInputRef.current?.click()}
+                                            disabled={isScanning}
+                                            className="text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:from-blue-600 hover:to-indigo-700 transition shadow-sm"
+                                        >
+                                            {isScanning ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                                                    Scanning...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Camera size={14} />
+                                                    Scan Receipt
+                                                </>
+                                            )}
+                                        </button>
+                                        <input
+                                            type="file"
+                                            ref={scanInputRef}
+                                            className="hidden"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={handleScanReceipt}
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1 text-center">
+                                            AI results may vary; please verify totals.
+                                        </p>
+                                    </div>
                                 )}
-                                <input
-                                    type="file"
-                                    ref={scanInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    capture="environment"
-                                    onChange={handleScanReceipt}
-                                />
                             </div>
                             <form onSubmit={handleSaveExpense} className="space-y-6">
                                 {/* Section: Main Details */}
