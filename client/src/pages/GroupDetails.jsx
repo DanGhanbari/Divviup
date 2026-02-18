@@ -528,11 +528,7 @@ const GroupDetails = () => {
     const isAdmin = group.members.find(m => m.id === user?.id)?.role === 'admin';
     const canExport = isOwner || isAdmin;
 
-    const currencySymbol = {
-        'USD': '$',
-        'GBP': '£',
-        'EUR': '€'
-    }[group.currency] || '$';
+    const currencySymbol = getSymbol(group.currency);
 
     return (
         <div>
@@ -622,7 +618,7 @@ const GroupDetails = () => {
                     onClick={() => setActiveTab('expenses')}
                     className={clsx("pb-2 px-2 sm:px-4 font-medium flex items-center gap-1 sm:gap-2 transition whitespace-nowrap", activeTab === 'expenses' ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700")}
                 >
-                    <ircleDollarSign size={18} /> Expenses
+                    <CircleDollarSign size={18} /> Expenses
                 </button>
                 <button
                     onClick={() => setActiveTab('tasks')}
@@ -670,7 +666,7 @@ const GroupDetails = () => {
                                         {String(expense.currency || 'USD').trim().toUpperCase() !== String(group.currency || 'USD').trim().toUpperCase() ? (
                                             <div className="flex flex-col items-end sm:hidden">
                                                 <span className="text-lg font-bold text-indigo-600 whitespace-nowrap">
-                                                    {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                                    ≈{currencySymbol}{Number(expense.amount).toFixed(2)}
                                                 </span>
                                                 <span className="text-xs text-slate-500 font-medium">
                                                     {getSymbol(expense.currency)}{Number(expense.original_amount || expense.amount).toFixed(2)}
@@ -773,7 +769,7 @@ const GroupDetails = () => {
                                             <div className="flex flex-col items-end">
                                                 <div className="group relative">
                                                     <span className="block text-lg font-bold text-indigo-600 cursor-help border-b border-dotted border-indigo-300">
-                                                        {currencySymbol}{Number(expense.amount).toFixed(2)}
+                                                        ≈{currencySymbol}{Number(expense.amount).toFixed(2)}
                                                     </span>
                                                     <div className="absolute bottom-full right-0 mb-2 invisible group-hover:visible bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">
                                                         Rate: {Number(expense.exchange_rate).toFixed(4)}
