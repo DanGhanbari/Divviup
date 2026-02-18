@@ -6,6 +6,8 @@ const db = require('./db');
 const emailService = require('./utils/emailService');
 const socketUtil = require('./utils/socket');
 
+const cookieParser = require('cookie-parser');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
@@ -16,22 +18,7 @@ if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
 
-// Write Google Cloud Credentials from Env Var (for Production)
-const path = require('path');
-const keyFilePath = path.resolve(__dirname, 'service-account-key.json');
-
-if (!fs.existsSync(keyFilePath) && process.env.GCP_CREDENTIALS) {
-  try {
-    fs.writeFileSync(keyFilePath, process.env.GCP_CREDENTIALS);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
-    console.log('✅ Created service-account-key.json and set GOOGLE_APPLICATION_CREDENTIALS');
-  } catch (err) {
-    console.error('❌ Failed to create service-account-key.json:', err);
-  }
-} else if (fs.existsSync(keyFilePath)) {
-  // If file exists (e.g. local dev), ensure env var is set
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
-}
+// ... (Google Cloud Credentials logic - keep as is)
 
 // CORS Configuration
 const allowedOrigins = [
@@ -39,7 +26,8 @@ const allowedOrigins = [
   'https://divviup.xyz',
   'https://www.divviup.xyz',
   'http://localhost:5173',
-  'http://localhost:5001'
+  'http://localhost:5001',
+  'http://localhost:3000'
 ];
 
 const corsOptions = {
@@ -57,7 +45,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// app.options('*', cors(corsOptions)); // Removed to prevent Express 5 PathError
+app.use(cookieParser());
 
 // Stripe webhook requires raw body
 app.use('/payments/webhook', express.raw({ type: 'application/json' }));

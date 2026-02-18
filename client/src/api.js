@@ -10,17 +10,15 @@ const getBaseUrl = () => {
 
 const api = axios.create({
     baseURL: getBaseUrl(),
+    withCredentials: true, // Send cookies with requests
 });
 
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
+// Response interceptor to handle 401 (optional, but good for clearing state if needed)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        return Promise.reject(error);
+    }
 );
 
 export default api;

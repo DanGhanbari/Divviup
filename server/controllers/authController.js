@@ -73,13 +73,20 @@ exports.register = async (req, res) => {
         const token = jwt.sign({ id: newUser.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         // Send Welcome Email
-        // Send Welcome Email
         console.log(`Attempting to send welcome email to ${newUser.rows[0].email}`);
         emailService.sendWelcomeEmail(newUser.rows[0].email, newUser.rows[0].name)
             .then(result => console.log('Email service result:', result))
             .catch(err => console.error('Background email send failed:', err));
 
-        res.status(201).json({ user: newUser.rows[0], token });
+        // Set Cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        res.status(201).json({ user: newUser.rows[0] }); // No token in body
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
@@ -111,6 +118,14 @@ exports.login = async (req, res) => {
         // Generate Token
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+        // Set Cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
         res.json({
             user: {
                 id: user.id,
@@ -120,13 +135,21 @@ exports.login = async (req, res) => {
                 plan: user.plan,
                 subscription_status: user.subscription_status,
                 current_period_end: user.current_period_end
-            },
-            token
+            }
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+exports.logout = (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
+    res.json({ message: 'Logged out successfully' });
 };
 
 exports.getMe = async (req, res) => {
