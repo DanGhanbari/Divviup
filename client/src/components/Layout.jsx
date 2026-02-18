@@ -126,9 +126,14 @@ const Layout = () => {
 
             <footer className="bg-white border-t border-slate-200 mt-auto hidden md:block">
                 <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
-                    <div className="flex items-center gap-4 mb-4 md:mb-0">
-                        <span className="font-bold text-slate-700">DivviUp</span>
-                        <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
+                    <div className="flex flex-col gap-1 mb-4 md:mb-0">
+                        <div className="flex items-center gap-4">
+                            <span className="font-bold text-slate-700">DivviUp</span>
+                            <span>&copy; {new Date().getFullYear()} DivviUp. All rights reserved.</span>
+                        </div>
+                        <div className="text-xs text-slate-400 hover:text-slate-500 transition-colors cursor-pointer">
+                            Privacy Policy | Terms & Conditions | Cookie Settings
+                        </div>
                     </div>
                     <div className="flex items-center gap-6">
                         <span>v{pkg.version}</span>
