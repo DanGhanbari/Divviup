@@ -1,12 +1,12 @@
 {
     "rewrites": [
         {
-            "source": "/api/(.*)",
-            "destination": "https://divviup-api.up.railway.app/$1"
+            "source": "/api/:match*",
+            "destination": "https://divviup-api.up.railway.app/:match*"
         },
         {
             "source": "/(.*)",
-            "destination": "/client/$1"
+            "destination": "/index.html"
         }
     ]
 }
