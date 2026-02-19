@@ -29,7 +29,7 @@ const GroupDetails = () => {
     const [balances, setBalances] = useState([]);
     const [activeTab, setActiveTab] = useState('expenses');
 
-    console.log('GroupDetails Render State:', { id, loading, group, expensesCount: expenses?.length });
+
 
     // Modal State
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', type: 'danger', onConfirm: null });
@@ -136,7 +136,7 @@ const GroupDetails = () => {
         // Listen for updates
         socket.on('group_updated', (data) => {
             if (data.groupId == id) {
-                console.log('Received group update:', data);
+
                 fetchData();
             }
         });
