@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "https://divviup-api.up.railway.app/$1"
+            "destination": "https://divviup-production.up.railway.app/$1"
         },
         {
             "source": "/(.*)",
