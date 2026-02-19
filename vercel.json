@@ -1,0 +1,12 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "https://divviup-api.up.railway.app/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/client/$1"
+        }
+    ]
+}
