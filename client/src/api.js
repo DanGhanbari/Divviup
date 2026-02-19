@@ -1,11 +1,12 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-    let url = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-    if (!url.startsWith('http')) {
-        url = `https://${url}`;
+    // In development, use the local backend
+    if (import.meta.env.DEV) {
+        return 'http://localhost:5001';
     }
-    return url;
+    // In production, use the relative /api path which Vercel rewrites to the backend
+    return '/api';
 };
 
 const api = axios.create({
