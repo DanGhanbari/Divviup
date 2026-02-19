@@ -13,7 +13,6 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Trust Proxy (Required for Railway/Vercel to set Secure cookies)
-// Trigger Deploy: v4.0.10
 app.set('trust proxy', 1);
 
 // Ensure uploads directory exists
@@ -226,13 +225,18 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
 // Mount routes on both root and /api paths to handle Vercel proxying defensively
+// Mount routes on both root and /api paths to handle Vercel proxying defensively
 app.use(['/auth', '/api/auth'], require('./routes/authRoutes'));
 app.use(['/payments', '/api/payments'], require('./routes/paymentRoutes'));
-app.use(['/', '/api'], expenseRoutes); // Mount at root and /api
+
+// Important: Mount /api first for expenseRoutes to ensure prefix is handled correctly if present
+app.use('/api', expenseRoutes);
+app.use('/', expenseRoutes);
+
 app.use(['/groups/:group_id/tasks', '/api/groups/:group_id/tasks'], taskRoutes);
 app.use(['/groups', '/api/groups'], require('./routes/groupRoutes'));
-app.use(['/api/receipts', '/api/api/receipts'], require('./routes/receiptRoutes'));
-app.use(['/api/currency', '/api/api/currency'], require('./routes/currencyRoutes'));
+app.use(['/receipts', '/api/receipts', '/api/api/receipts'], require('./routes/receiptRoutes'));
+app.use(['/currency', '/api/currency', '/api/api/currency'], require('./routes/currencyRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {
