@@ -225,7 +225,6 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
 // Mount routes on both root and /api paths to handle Vercel proxying defensively
-// Mount routes on both root and /api paths to handle Vercel proxying defensively
 app.use(['/auth', '/api/auth'], require('./routes/authRoutes'));
 app.use(['/payments', '/api/payments'], require('./routes/paymentRoutes'));
 

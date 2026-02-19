@@ -154,9 +154,13 @@ exports.logout = (req, res) => {
 
 exports.getMe = async (req, res) => {
     try {
+        if (!req.user) {
+            return res.json(null); // Return null instead of 401
+        }
+
         const userResult = await db.query('SELECT id, name, email, avatar_url, plan, subscription_status, current_period_end FROM users WHERE id = $1', [req.user.id]);
         if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.json(null); // User might have been deleted
         }
         res.json(userResult.rows[0]);
     } catch (err) {

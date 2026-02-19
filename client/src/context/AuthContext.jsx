@@ -10,9 +10,10 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
         try {
             const res = await api.get('/auth/me');
-            setUser(res.data);
+            // If res.data is null (from our new passive auth), it sets user to null (not logged in)
+            setUser(res.data || null);
         } catch (err) {
-            // 401 or 403 means not logged in / invalid cookie
+            // Still catch real network errors, but 401 shouldn't happen now
             setUser(null);
         } finally {
             setLoading(false);
