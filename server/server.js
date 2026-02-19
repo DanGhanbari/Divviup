@@ -224,13 +224,14 @@ app.get('/api/test-email', async (req, res) => {
 const expenseRoutes = require('./routes/expenseRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
-app.use('/auth', require('./routes/authRoutes'));
-app.use('/payments', require('./routes/paymentRoutes'));
-app.use('/', expenseRoutes); // Mount at root, paths defined in router
-app.use('/groups/:group_id/tasks', taskRoutes);
-app.use('/groups', require('./routes/groupRoutes'));
-app.use('/api/receipts', require('./routes/receiptRoutes'));
-app.use('/api/currency', require('./routes/currencyRoutes'));
+// Mount routes on both root and /api paths to handle Vercel proxying defensively
+app.use(['/auth', '/api/auth'], require('./routes/authRoutes'));
+app.use(['/payments', '/api/payments'], require('./routes/paymentRoutes'));
+app.use(['/', '/api'], expenseRoutes); // Mount at root and /api
+app.use(['/groups/:group_id/tasks', '/api/groups/:group_id/tasks'], taskRoutes);
+app.use(['/groups', '/api/groups'], require('./routes/groupRoutes'));
+app.use(['/api/receipts', '/api/api/receipts'], require('./routes/receiptRoutes'));
+app.use(['/api/currency', '/api/api/currency'], require('./routes/currencyRoutes'));
 
 // Basic Health Check
 app.get('/', (req, res) => {
