@@ -63,24 +63,31 @@ const GroupDetails = () => {
 
     const fetchData = React.useCallback(async () => {
         try {
-            const groupRes = await api.get(`/groups/${id}`);
-            setGroup(groupRes.data);
+            // Fetch all data in parallel
+            const [groupRes, expensesRes, tasksRes, balancesRes] = await Promise.all([
+                api.get(`/groups/${id}`),
+                api.get(`/groups/${id}/expenses`),
+                api.get(`/groups/${id}/tasks`),
+                api.get(`/groups/${id}/balances`)
+            ]);
 
-            const expensesRes = await api.get(`/groups/${id}/expenses`);
+            // Batch updates (React 18+ automatic batching handles this, but logic is cleaner)
+            const groupData = groupRes.data;
+            setGroup(groupData);
             setExpenses(expensesRes.data);
-
-            const tasksRes = await api.get(`/groups/${id}/tasks`);
             setTasks(tasksRes.data);
-
-            const balancesRes = await api.get(`/groups/${id}/balances`);
             setBalances(balancesRes.data);
 
             // Set default currency for new expenses based on group settings
-            if (groupRes.data && groupRes.data.currency) {
-                setNewExpense(prev => ({ ...prev, currency: groupRes.data.currency }));
+            if (groupData && groupData.currency) {
+                setNewExpense(prev => ({ ...prev, currency: groupData.currency }));
             }
         } catch (err) {
-            console.error(err);
+            console.error('Error fetching group data:', err);
+            // Optional: Handle 404 specifically if needed
+            if (err.response && err.response.status === 404) {
+                setGroup(null);
+            }
         }
     }, [id]);
 
