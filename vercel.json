@@ -1,8 +1,8 @@
 {
     "rewrites": [
         {
-            "source": "/api/:match*",
-            "destination": "https://divviup-api.up.railway.app/:match*"
+            "source": "/api/(.*)",
+            "destination": "https://divviup-api.up.railway.app/$1"
         },
         {
             "source": "/(.*)",
