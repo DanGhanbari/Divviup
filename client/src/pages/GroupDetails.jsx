@@ -55,6 +55,7 @@ const GroupDetails = () => {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [isFetchingRate, setIsFetchingRate] = useState(false);
     // Filter & Sort State
     const [showFilters, setShowFilters] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
