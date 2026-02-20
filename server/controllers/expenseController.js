@@ -200,7 +200,7 @@ exports.getGroupBalances = async (req, res) => {
 
         // 3. Get all group members to ensure everyone is included
         const membersResult = await db.query(
-            `SELECT u.id, u.name, u.email, u.avatar_url 
+            `SELECT u.id, u.name, u.email, u.avatar_url, u.plan 
              FROM group_members gm 
              JOIN users u ON gm.user_id = u.id 
              WHERE gm.group_id = $1`,

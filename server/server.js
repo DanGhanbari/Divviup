@@ -30,7 +30,8 @@ const allowedOrigins = [
   'https://www.divviup.xyz',
   'http://localhost:5173',
   'http://localhost:5001',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:8081'
 ];
 
 const corsOptions = {

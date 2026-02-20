@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Lock, Save, Star, CreditCard, Calendar, AlertTriangle } from 'lucide-react';
+import { User, Lock, Save, Star, CreditCard, Calendar, AlertTriangle, Shield } from 'lucide-react';
 import api from '../api';
 import { Link } from 'react-router-dom';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -228,6 +228,31 @@ const Settings = () => {
                 </form>
             </div>
 
+            {/* Legal & Privacy Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-indigo-100 p-2 rounded-lg">
+                        <Shield className="text-indigo-600" size={20} />
+                    </div>
+                    <h2 className="text-lg font-bold text-slate-800">Legal & Privacy</h2>
+                </div>
+
+                <div className="space-y-1">
+                    <Link to="/terms" className="flex items-center justify-between py-3 border-b border-slate-100 hover:text-indigo-600 transition-colors">
+                        <span className="text-slate-700 font-medium">Terms & Conditions</span>
+                    </Link>
+                    <Link to="/privacy" className="flex items-center justify-between py-3 border-b border-slate-100 hover:text-indigo-600 transition-colors">
+                        <span className="text-slate-700 font-medium">Privacy Policy</span>
+                    </Link>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('openCookieSettings'))}
+                        className="w-full flex items-center justify-between py-3 hover:text-indigo-600 transition-colors"
+                    >
+                        <span className="text-slate-700 font-medium">Cookies Settings</span>
+                    </button>
+                </div>
+            </div>
+
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
@@ -237,7 +262,7 @@ const Settings = () => {
                 confirmText={confirmModal.confirmText}
                 onConfirm={confirmModal.onConfirm}
             />
-        </div>
+        </div >
     );
 };
 

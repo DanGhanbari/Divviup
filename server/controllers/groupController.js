@@ -52,7 +52,11 @@ exports.createGroup = async (req, res) => {
 exports.getUserGroups = async (req, res) => {
     try {
         const result = await db.query(
-            `SELECT g.*, gm.role 
+            `SELECT g.*, gm.role,
+               (SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'role', gm2.role, 'plan', u.plan)) 
+                FROM group_members gm2 
+                JOIN users u ON gm2.user_id = u.id 
+                WHERE gm2.group_id = g.id) as members
        FROM groups g 
        JOIN group_members gm ON g.id = gm.group_id 
        WHERE gm.user_id = $1 

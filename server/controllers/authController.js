@@ -86,7 +86,7 @@ exports.register = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
-        res.status(201).json({ user: newUser.rows[0] }); // No token in body
+        res.status(201).json({ user: newUser.rows[0], token }); // Return token for mobile apps
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
@@ -94,11 +94,13 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
     }
+
+    email = email.trim().toLowerCase();
 
     try {
         // Check user
@@ -135,7 +137,8 @@ exports.login = async (req, res) => {
                 plan: user.plan,
                 subscription_status: user.subscription_status,
                 current_period_end: user.current_period_end
-            }
+            },
+            token
         });
     } catch (err) {
         console.error(err);
@@ -211,11 +214,13 @@ exports.changePassword = async (req, res) => {
 
 
 exports.forgotPassword = async (req, res) => {
-    const { email } = req.body;
+    let { email } = req.body;
 
     if (!email) {
         return res.status(400).json({ error: 'Email is required' });
     }
+
+    email = email.trim().toLowerCase();
 
     try {
         const userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -230,13 +235,10 @@ exports.forgotPassword = async (req, res) => {
         const resetToken = crypto.randomBytes(32).toString('hex');
         const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-        // Token expires in 1 hour
-        const resetExpires = new Date(Date.now() + 3600000);
-
-        // Save token to DB
+        // Save token to DB, setting expiration to 1 hour from now using Postgre's time
         await db.query(
-            'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
-            [resetTokenHash, resetExpires, user.id]
+            "UPDATE users SET reset_password_token = $1, reset_password_expires = NOW() + INTERVAL '1 hour' WHERE id = $2",
+            [resetTokenHash, user.id]
         );
 
         // Send email
@@ -261,7 +263,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     try {
-        const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const resetTokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
 
         // Find user with valid token
         const userResult = await db.query(
