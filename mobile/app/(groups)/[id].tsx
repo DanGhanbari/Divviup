@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, FlatList, Modal, SafeAreaView, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Receipt, Plus, DollarSign, CheckSquare, Pencil, Trash2, Paperclip, Filter, Search, ArrowDownUp, Users, Camera, Upload, X, Scale, Star } from 'lucide-react-native';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
 import api from '../../api';
 import { useGroupSocket } from '../../hooks/useGroupSocket';
 import AddExpenseBottomSheet from '../../components/AddExpenseBottomSheet';
@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function GroupDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
-    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const [isAddExpenseVisible, setIsAddExpenseVisible] = useState(false);
     const [group, setGroup] = useState<any>(null);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
@@ -124,7 +124,7 @@ export default function GroupDetailsScreen() {
 
             fullExpense.mappedSplits = splitsState;
             setExpenseToEdit(fullExpense);
-            bottomSheetModalRef.current?.present();
+            setIsAddExpenseVisible(true);
         } catch (err) {
             console.error(err);
             Alert.alert('Error', 'Failed to load expense details');
@@ -557,7 +557,7 @@ export default function GroupDetailsScreen() {
                     onPress={() => {
                         if (activeTab === 'expenses') {
                             setExpenseToEdit(null);
-                            bottomSheetModalRef.current?.present();
+                            setIsAddExpenseVisible(true);
                         } else {
                             // router.push(`/groups/${id}/add-task`);
                         }
@@ -580,21 +580,24 @@ export default function GroupDetailsScreen() {
                     {selectedReceipt && (
                         <Image
                             source={{ uri: selectedReceipt }}
-                            className="w-full h-4/5"
+                            style={{ width: '100%', height: '80%' }}
                             resizeMode="contain"
                         />
                     )}
                 </SafeAreaView>
             </Modal>
 
-            <AddExpenseBottomSheet
-                bottomSheetModalRef={bottomSheetModalRef}
-                groupId={id as string}
-                group={group}
-                expenseToEdit={expenseToEdit}
-                setExpenseToEdit={setExpenseToEdit}
-                onExpenseAdded={fetchGroupDetails}
-            />
+            <ThemeProvider value={DefaultTheme}>
+                <AddExpenseBottomSheet
+                    visible={isAddExpenseVisible}
+                    onClose={() => setIsAddExpenseVisible(false)}
+                    groupId={id as string}
+                    group={group}
+                    expenseToEdit={expenseToEdit}
+                    setExpenseToEdit={setExpenseToEdit}
+                    onExpenseAdded={fetchGroupDetails}
+                />
+            </ThemeProvider>
         </View>
     );
 }

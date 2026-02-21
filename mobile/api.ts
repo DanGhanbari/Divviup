@@ -5,7 +5,7 @@ import { getItemAsync, deleteItemAsync } from './utils/storage';
 const getBaseUrl = () => {
     // Android emulator needs 10.0.2.2 to access localhost. iOS simulator can use localhost.
     if (__DEV__) {
-        // For physical devices (Expo Go), use your computer's local WiFi IP address (192.168.1.70).
+        // For physical devices (Expo Go), use your computer's local WiFi IP address.
         // If you are using an Android Emulator, 10.0.2.2 would be used instead.
         return 'http://192.168.1.70:5001';
     }
