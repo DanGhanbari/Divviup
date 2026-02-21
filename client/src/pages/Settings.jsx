@@ -229,7 +229,7 @@ const Settings = () => {
             </div>
 
             {/* Legal & Privacy Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-8 md:hidden">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="bg-indigo-100 p-2 rounded-lg">
                         <Shield className="text-indigo-600" size={20} />
